@@ -25,7 +25,7 @@ import org.xbmc.kore.jsonrpc.ApiCallback;
 import org.xbmc.kore.jsonrpc.HostConnection;
 import org.xbmc.kore.jsonrpc.method.VideoLibrary;
 import org.xbmc.kore.jsonrpc.type.VideoType;
-import org.xbmc.kore.provider.MediaContract;
+import org.xbmc.nanisore.provider.MediaContract;
 import org.xbmc.kore.utils.LogUtils;
 
 import java.util.List;

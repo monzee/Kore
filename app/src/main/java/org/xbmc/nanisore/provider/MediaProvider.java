@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.xbmc.kore.provider;
+package org.xbmc.nanisore.provider;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
@@ -23,7 +23,6 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.provider.BaseColumns;
-import android.support.annotation.Nullable;
 
 import org.xbmc.kore.utils.LogUtils;
 import org.xbmc.kore.utils.SelectionBuilder;

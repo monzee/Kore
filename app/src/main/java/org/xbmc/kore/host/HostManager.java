@@ -34,7 +34,7 @@ import com.squareup.picasso.Picasso;
 import org.xbmc.kore.BuildConfig;
 import org.xbmc.kore.Settings;
 import org.xbmc.kore.jsonrpc.HostConnection;
-import org.xbmc.kore.provider.MediaContract;
+import org.xbmc.nanisore.provider.MediaContract;
 import org.xbmc.kore.utils.BasicAuthUrlConnectionDownloader;
 import org.xbmc.kore.utils.LogUtils;
 import org.xbmc.kore.utils.NetUtils;

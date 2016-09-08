@@ -15,7 +15,7 @@ android {
     buildToolsVersion "24.0.2"
 
     defaultConfig {
-        applicationId "org.xbmc.kore"
+        applicationId "org.xbmc.nanisore"
         minSdkVersion 15
         targetSdkVersion 23
         versionCode 14

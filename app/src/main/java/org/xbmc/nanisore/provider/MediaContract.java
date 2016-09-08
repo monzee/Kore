@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.xbmc.kore.provider;
+package org.xbmc.nanisore.provider;
 
 import android.net.Uri;
 import android.provider.BaseColumns;
@@ -23,7 +23,7 @@ import android.provider.BaseColumns;
  */
 public class MediaContract {
 
-    public static final String CONTENT_AUTHORITY = "org.xbmc.kore.provider";
+    public static final String CONTENT_AUTHORITY = "org.xbmc.nanisore.provider";
 
     public static final Uri BASE_CONTENT_URI = Uri.parse("content://" + CONTENT_AUTHORITY);
 

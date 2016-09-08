@@ -63,8 +63,8 @@
 
         <!-- Providers -->
         <provider
-            android:name="org.xbmc.kore.provider.MediaProvider"
-            android:authorities="org.xbmc.kore.provider"
+            android:name="org.xbmc.nanisore.provider.MediaProvider"
+            android:authorities="org.xbmc.nanisore.provider"
             android:exported="false"/>
 
         <!-- Services -->

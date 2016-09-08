@@ -28,7 +28,7 @@ import org.xbmc.kore.jsonrpc.method.AudioLibrary;
 import org.xbmc.kore.jsonrpc.type.AudioType;
 import org.xbmc.kore.jsonrpc.type.LibraryType;
 import org.xbmc.kore.jsonrpc.type.ListType;
-import org.xbmc.kore.provider.MediaContract;
+import org.xbmc.nanisore.provider.MediaContract;
 import org.xbmc.kore.utils.LogUtils;
 
 import java.util.ArrayList;
