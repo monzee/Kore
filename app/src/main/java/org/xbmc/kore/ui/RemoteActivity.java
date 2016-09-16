@@ -620,6 +620,7 @@ public class RemoteActivity extends BaseActivity
      * HostConnectionObserver.PlayerEventsObserver interface callbacks
      */
     private String lastImageUrl = null;
+    @Override
     public void playerOnPlay(PlayerType.GetActivePlayersReturnType getActivePlayerResult,
                              PlayerType.PropertyValue getPropertiesResult,
                              ListType.ItemsAll getItemResult) {
@@ -658,12 +659,14 @@ public class RemoteActivity extends BaseActivity
 //        }
     }
 
+    @Override
     public void playerOnPause(PlayerType.GetActivePlayersReturnType getActivePlayerResult,
                               PlayerType.PropertyValue getPropertiesResult,
                               ListType.ItemsAll getItemResult) {
         playerOnPlay(getActivePlayerResult, getPropertiesResult, getItemResult);
     }
 
+    @Override
     public void playerOnStop() {
         LogUtils.LOGD(TAG, "Player stopping");
         if (lastImageUrl != null) {
@@ -672,30 +675,36 @@ public class RemoteActivity extends BaseActivity
         lastImageUrl = null;
     }
 
+    @Override
     public void playerNoResultsYet() {
         // Do nothing
     }
 
+    @Override
     public void playerOnConnectionError(int errorCode, String description) {
         playerOnStop();
     }
 
+    @Override
     public void systemOnQuit() {
         Toast.makeText(this, R.string.xbmc_quit, Toast.LENGTH_SHORT).show();
         playerOnStop();
     }
 
+    @Override
     public void inputOnInputRequested(String title, String type, String value) {
         SendTextDialogFragment dialog =
                 SendTextDialogFragment.newInstance(title);
         dialog.show(getSupportFragmentManager(), null);
     }
 
+    @Override
     public void observerOnStopObserving() {}
 
     /**
      * Now playing fragment listener
      */
+    @Override
     public void SwitchToRemotePanel() {
         viewPager.setCurrentItem(1);
     }

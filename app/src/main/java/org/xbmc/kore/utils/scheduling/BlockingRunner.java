@@ -23,7 +23,7 @@ public class BlockingRunner extends BaseRunner {
 
     @Override
     public <T> void once(Producer<T> task, Continuation<T> handler) {
-        schedule(task, handler);
+        schedule(task, handler).cancel();
     }
 
 }

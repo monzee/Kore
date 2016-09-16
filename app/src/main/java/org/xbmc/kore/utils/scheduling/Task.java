@@ -1,5 +1,6 @@
 package org.xbmc.kore.utils.scheduling;
 
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -45,6 +46,42 @@ public class Task<T> implements Producer<T> {
         return fn instanceof Task ? (Task<T>) fn
                 : id == null ? new Task<>(fn)
                 : new Task<>(id, fn);
+    }
+
+    public static <T> Task<T> unit(final Future<T> future) {
+        return unit(new Producer<T>() {
+            @Override
+            public T apply() throws Throwable {
+                return future.get();
+            }
+        });
+    }
+
+    public static <T> Task<T> unit(String id, final Future<T> future) {
+        return unit(id, new Producer<T>() {
+            @Override
+            public T apply() throws Throwable {
+                return future.get();
+            }
+        });
+    }
+
+    public static <T> Task<T> just(final T value) {
+        return unit(new Producer<T>() {
+            @Override
+            public T apply() throws Throwable {
+                return value;
+            }
+        });
+    }
+
+    public static <T> Task<T> just(String id, final T value) {
+        return unit(id, new Producer<T>() {
+            @Override
+            public T apply() throws Throwable {
+                return value;
+            }
+        });
     }
 
     /**

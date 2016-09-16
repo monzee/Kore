@@ -19,8 +19,9 @@ public abstract class BaseRunner implements Runner {
     }
 
     /**
-     * THIS WILL DEADLOCK SINGLE-THREADED RUNNERS! Make sure you override this
-     * in that case.
+     * THIS WILL DEADLOCK RUNNERS THAT RUN THE TASK IN THE CALLER THREAD!
+     *
+     * Make sure you override this method in that case.
      */
     @Override
     public <T> void once(final Producer<T> task, final Continuation<T> handler) {
