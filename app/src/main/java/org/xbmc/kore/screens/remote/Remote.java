@@ -1,16 +1,20 @@
 package org.xbmc.kore.screens.remote;
 
 import org.xbmc.kore.host.HostManager;
-import org.xbmc.kore.jsonrpc.type.PlayerType;
+import org.xbmc.kore.jsonrpc.type.PlayerType.GetActivePlayersReturnType;
+import org.xbmc.kore.jsonrpc.type.PlaylistType;
 
 import java.util.List;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 
 public interface Remote {
 
     interface Display {
         void tell(String message);
+        void tell(Message message, Object... extra);
         void log(Log level, String message);
-        void goAddHost(int... flags);
+        void goToHostAdder();
         void initNavigationDrawer();
         void initTabs();
         void initActionBar();
@@ -25,7 +29,7 @@ public interface Remote {
     interface Actions {
         void bind(Display view);
         void unbind();
-        void didSendVideoUri(String uriString);
+        void didShareVideo(String uriString);
         void didPressVolumeUp();
         void didPressVolumeDown();
         void didChoose(MenuAction action);
@@ -33,39 +37,36 @@ public interface Remote {
     }
 
     interface UseCases {
-        void checkHostPresence();
-        void hostPresenceChecked(boolean found);
+        FutureTask<Boolean> clearPlaylistIfPlaying(List<GetActivePlayersReturnType> players);
+        FutureTask enqueueFile(String videoUri, boolean startPlaying);
+    }
 
-        void fetchActivePlayers();
-        void activePlayersFetched(List<PlayerType.GetActivePlayersReturnType> players);
-
+    interface Rpc {
+        List<GetActivePlayersReturnType> getActivePlayers();
         void clearPlaylist();
-        void playlistCleared();
-
-        void checkFlag(Option opt);
-        void flagChecked(Option opt, boolean value);
-
-        void checkPvrEnabledForCurrentHost();
-        void pvrEnabledChecked(String key, boolean status);
-
-        String tryParseVimeoUrl(String path);
-        String tryPraseYoutubeUrl(String query);
-        void enqueueFile(String videoUri, boolean startPlaylist);
+        void addToPlaylist(PlaylistType.Item item);
+        void openPlaylist();
         void increaseVolume();
         void decreaseVolume();
+        boolean isPvrEnabled();
     }
 
     interface Options {
-        boolean getBoolean(String key);
-        void putBoolean(String key, boolean value);
+        <T> T get(String key, T whenAbsent);
+        <T> void put(String key, T value);
     }
 
-    interface WhenBound {
-        void with(Display view);
-    }
+    class RpcError extends RuntimeException {
+        public final Message type;
+        public final int errorCode;
+        public final String description;
 
-    interface ViewBound {
-        boolean run(WhenBound action);
+        public RpcError(Message type, int errorCode, String description) {
+            super("Kodi RPC error: " + description);
+            this.type = type;
+            this.errorCode = errorCode;
+            this.description = description;
+        }
     }
 
     enum Option { KEEP_ABOVE_LOCK_SCREEN, KEEP_SCREEN_ON, USE_HARDWARE_VOLUME_KEYS }
@@ -73,6 +74,11 @@ public interface Remote {
     enum MenuAction {
         WAKE_UP, QUIT, SUSPEND, REBOOT, SHUTDOWN, SEND_TEXT, FULLSCREEN,
         CLEAN_VIDEO_LIBRARY, CLEAN_AUDIO_LIBRARY, UPDATE_VIDEO_LIBRARY, UPDATE_AUDIO_LIBRARY
+    }
+
+    enum Message {
+        GENERAL_ERROR,
+        CANNOT_SHARE_VIDEO, CANNOT_GET_ACTIVE_PLAYER, CANNOT_ENQUEUE_FILE, CANNOT_PLAY_FILE
     }
 
     enum Log {

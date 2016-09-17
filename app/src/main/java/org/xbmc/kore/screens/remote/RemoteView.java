@@ -26,6 +26,8 @@ import org.xbmc.kore.ui.views.CirclePageIndicator;
 import org.xbmc.kore.utils.TabsAdapter;
 import org.xbmc.kore.utils.UIUtils;
 
+import java.util.Arrays;
+
 import butterknife.ButterKnife;
 import butterknife.InjectView;
 
@@ -41,6 +43,7 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
 
     private final AppCompatActivity activity;
     private final FragmentManager fragments;
+    private NavigationDrawerFragment navigationDrawerFragment;
 
     @InjectView(R.id.background_image)
     ImageView backgroundImage;
@@ -69,6 +72,31 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
     }
 
     @Override
+    public void tell(Remote.Message message, Object... extra) {
+        switch (message) {
+            case CANNOT_SHARE_VIDEO:
+                tell(getString(R.string.error_share_video));
+                break;
+            case CANNOT_GET_ACTIVE_PLAYER:
+                tell(getString(R.string.error_get_active_player, extra));
+                break;
+            case CANNOT_ENQUEUE_FILE:
+                tell(getString(R.string.error_queue_media_file, extra));
+                break;
+            case CANNOT_PLAY_FILE:
+                tell(getString(R.string.error_play_media_file, extra));
+                break;
+            default:
+                if (extra.length == 1) {
+                    tell(String.valueOf(extra[0]));
+                } else {
+                    tell(Arrays.toString(extra));
+                }
+                break;
+        }
+    }
+
+    @Override
     public void log(Remote.Log level, String message) {
         switch (level) {
             case D:
@@ -84,16 +112,13 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
     }
 
     @Override
-    public void goAddHost(int... flags) {
+    public void goToHostAdder() {
         Intent i = new Intent(activity, AddHostActivity.class);
-        for (int flag : flags) {
-            i.addFlags(flag);
-        }
+        i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         activity.startActivity(i);
         activity.finish();
     }
-
-    private NavigationDrawerFragment navigationDrawerFragment;
 
     @Override
     public void initNavigationDrawer() {
@@ -137,7 +162,7 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
 
     @Override
     public boolean shouldInflateMenu() {
-        return !navigationDrawerFragment.isDrawerOpen();
+        return navigationDrawerFragment == null || !navigationDrawerFragment.isDrawerOpen();
     }
 
     @Override
@@ -218,6 +243,7 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
 
                     @Override
                     public void onPageScrollStateChanged(int state) {
+                        // noop
                     }
                 });
                 return true;
@@ -225,8 +251,8 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
         });
     }
 
-    private String getString(int resId) {
-        return activity.getString(resId);
+    private String getString(int resId, Object... fmtArgs) {
+        return activity.getString(resId, fmtArgs);
     }
 
 }
