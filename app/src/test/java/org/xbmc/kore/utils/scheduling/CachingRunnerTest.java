@@ -42,14 +42,14 @@ public class CachingRunnerTest {
     @Test
     public void success_value_is_cached() {
         CachingRunner runner = new CachingRunner(new BlockingRunner());
-        runner.schedule(new Task<>("foo", next), new Continuation<Integer>() {
+        runner.schedule(Task.unit("foo", next), new Continuation<Integer>() {
             @Override
             public void accept(Integer result, Throwable error) {
                 assertNull(error);
                 assertEquals(1, result.intValue());
             }
         });
-        runner.schedule(new Task<>("foo", fail("", Integer.class)), new Continuation<Integer>() {
+        runner.schedule(Task.unit("foo", fail("", 0)), new Continuation<Integer>() {
             @Override
             public void accept(Integer result, Throwable error) {
                 assertNull(error);
@@ -61,14 +61,14 @@ public class CachingRunnerTest {
     @Test
     public void thrown_error_is_cached() {
         CachingRunner runner = new CachingRunner(new BlockingRunner());
-        runner.schedule(new Task<>("foo", fail("foobar", Integer.class)), new Continuation<Integer>() {
+        runner.schedule(Task.unit("foo", fail("foobar", 0)), new Continuation<Integer>() {
             @Override
             public void accept(Integer result, Throwable error) {
                 assertNull(result);
                 assertEquals("foobar", error.getMessage());
             }
         });
-        runner.schedule(new Task<>("foo", just(1)), new Continuation<Integer>() {
+        runner.schedule(Task.just("foo", 1), new Continuation<Integer>() {
             @Override
             public void accept(Integer result, Throwable error) {
                 assertNull(result);
@@ -80,14 +80,14 @@ public class CachingRunnerTest {
     @Test
     public void new_task_is_not_invoked_when_there_is_a_cached_value() throws InterruptedException {
         Runner r = new CachingRunner(new BlockingRunner());
-        r.schedule(new Task<>("foo", just(1)), new Continuation<Integer>() {
+        r.schedule(Task.just("foo", 1), new Continuation<Integer>() {
             @Override
             public void accept(Integer result, Throwable error) {
                 assertEquals(1, result.intValue());
             }
         });
         final AtomicBoolean called = new AtomicBoolean(false);
-        r.schedule(new Task<>("foo", new Producer<Object>() {
+        r.schedule(Task.unit("foo", new Producer<Object>() {
             @Override
             public Object apply() throws Throwable {
                 called.set(true);
@@ -100,21 +100,21 @@ public class CachingRunnerTest {
     @Test
     public void cancel_clears_the_cache() {
         CachingRunner runner = new CachingRunner(new BlockingRunner());
-        runner.schedule(new Task<>("foo", next), new Continuation<Integer>() {
+        runner.schedule(Task.unit("foo", next), new Continuation<Integer>() {
             @Override
             public void accept(Integer result, Throwable error) {
                 assertNull(error);
                 assertEquals(1, result.intValue());
             }
         }).cancel();
-        runner.schedule(new Task<>("foo", next), new Continuation<Integer>() {
+        runner.schedule(Task.unit("foo", next), new Continuation<Integer>() {
             @Override
             public void accept(Integer result, Throwable error) {
                 assertNull(error);
                 assertEquals(2, result.intValue());
             }
         });
-        runner.schedule(new Task<>("foo", next), new Continuation<Integer>() {
+        runner.schedule(Task.unit("foo", next), new Continuation<Integer>() {
             @Override
             public void accept(Integer result, Throwable error) {
                 assertNull(error);
@@ -123,16 +123,7 @@ public class CachingRunnerTest {
         });
     }
 
-    private static <T> Producer<T> just(final T value) {
-        return new Producer<T>() {
-            @Override
-            public T apply() throws Throwable {
-                return value;
-            }
-        };
-    }
-
-    private static <T> Producer<T> fail(final String message, Class<T> type) {
+    private static <T> Producer<T> fail(final String message, T unused) {
         return new Producer<T>() {
             @Override
             public T apply() throws Throwable {
