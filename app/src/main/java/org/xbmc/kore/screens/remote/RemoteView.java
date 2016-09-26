@@ -30,6 +30,7 @@ import java.util.Arrays;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
+import com.squareup.picasso.Picasso;
 
 public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListener {
 
@@ -43,6 +44,7 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
 
     private final AppCompatActivity activity;
     private final FragmentManager fragments;
+    private final Picasso picasso;
     private NavigationDrawerFragment navigationDrawerFragment;
 
     @InjectView(R.id.background_image)
@@ -60,8 +62,9 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
     @InjectView(R.id.drawer_layout)
     DrawerLayout drawerLayout;
 
-    public RemoteView(AppCompatActivity activity) {
+    public RemoteView(AppCompatActivity activity, Picasso picasso) {
         this.activity = activity;
+        this.picasso = picasso;
         fragments = activity.getSupportFragmentManager();
         ButterKnife.inject(this, activity);
     }
@@ -72,25 +75,25 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
     }
 
     @Override
-    public void tell(Remote.Message message, Object... extra) {
+    public void tell(Remote.Message message, Object... fmtArgs) {
         switch (message) {
             case CANNOT_SHARE_VIDEO:
                 tell(getString(R.string.error_share_video));
                 break;
             case CANNOT_GET_ACTIVE_PLAYER:
-                tell(getString(R.string.error_get_active_player, extra));
+                tell(getString(R.string.error_get_active_player, fmtArgs));
                 break;
             case CANNOT_ENQUEUE_FILE:
-                tell(getString(R.string.error_queue_media_file, extra));
+                tell(getString(R.string.error_queue_media_file, fmtArgs));
                 break;
             case CANNOT_PLAY_FILE:
-                tell(getString(R.string.error_play_media_file, extra));
+                tell(getString(R.string.error_play_media_file, fmtArgs));
                 break;
             default:
-                if (extra.length == 1) {
-                    tell(String.valueOf(extra[0]));
+                if (fmtArgs.length == 1) {
+                    tell(String.valueOf(fmtArgs[0]));
                 } else {
-                    tell(Arrays.toString(extra));
+                    tell(Arrays.toString(fmtArgs));
                 }
                 break;
         }
@@ -178,7 +181,7 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
     }
 
     @Override
-    public void setBackgroundImage(HostManager hostManager, String url) {
+    public void setBackgroundImage(String url) {
         if (url == null) {
             backgroundImage.setImageDrawable(null);
             pageIndicator.setOnPageChangeListener(this);
@@ -186,10 +189,10 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
             Point displaySize = new Point();
             activity.getWindowManager().getDefaultDisplay().getSize(displaySize);
 
-            UIUtils.loadImageIntoImageview(
-                    hostManager, url, backgroundImage,
-                    displaySize.x, displaySize.y / 2
-            );
+            picasso.load(url)
+                .resize(displaySize.x, displaySize.y / 2)
+                .centerCrop()
+                .into(backgroundImage);
 
             pinBackground(backgroundImage.getViewTreeObserver(), displaySize.x / 4);
         }

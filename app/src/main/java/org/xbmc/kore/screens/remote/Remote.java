@@ -12,7 +12,7 @@ public interface Remote {
 
     interface Display {
         void tell(String message);
-        void tell(Message message, Object... extra);
+        void tell(Message message, Object... fmtArgs);
         void log(Log level, String message);
         void goToHostAdder();
         void initNavigationDrawer();
@@ -23,7 +23,7 @@ public interface Remote {
         boolean shouldInflateMenu();
         void promptTextToSend();
         void setToolbarTitle(String title);
-        void setBackgroundImage(HostManager hostManager, String url);
+        void setBackgroundImage(String url);
     }
 
     interface Actions {
@@ -37,10 +37,69 @@ public interface Remote {
     }
 
     interface UseCases {
-        FutureTask<Boolean> clearPlaylistIfPlaying(List<GetActivePlayersReturnType> players);
-        FutureTask enqueueFile(String videoUri, boolean startPlaying);
+
+        /**
+         * Called during unbind().
+         *
+         * The argument passed here should be returned on the next call to
+         * restoreState().
+         */
+        void saveState(State state);
+
+        /**
+         * Called during bind().
+         *
+         * Should set the initial state on first run. Otherwise, return the
+         * last state saved.
+         */
+        void restoreState(MightFail<? extends OnRestore> then);
+
+        /**
+         * Called before enqueuing a shared video URL.
+         *
+         * The playlist should not be cleared if there's a video being played
+         * in the connected host.
+         */
+        void maybeClearPlaylist(MightFail<? extends OnMaybeClearPlaylist> then);
+
+        /**
+         * Called if the user intended to share a YouTube/Vimeo URL.
+         *
+         * The enqueued file should be played immediately if the playlist was
+         * cleared.
+         */
+        void enqueueFile(String videoUri, boolean startPlaying, MightFail<?> then);
+
     }
 
+    interface OnRestore {
+        void restored(State state);
+    }
+
+    interface OnMaybeClearPlaylist {
+        void playlistMaybeCleared(boolean decision);
+    }
+
+    abstract class MightFail<T> {
+        public final T ok;
+
+        public MightFail(T callback) {
+            ok = callback;
+        }
+
+        public abstract void fail(Throwable error);
+    }
+
+    interface State {
+    }
+
+    /**
+     * Synchronously wraps the RPC classes needed by this screen.
+     *
+     * Every method in this interface should block until the remote call has
+     * returned, even the void methods. Any errors thrown should be an instance
+     * of RpcError for proper feedback.
+     */
     interface Rpc {
         List<GetActivePlayersReturnType> getActivePlayers();
         void clearPlaylist();
@@ -57,6 +116,7 @@ public interface Remote {
     }
 
     class RpcError extends RuntimeException {
+        private static final long serialVersionUID = 1;
         public final Message type;
         public final int errorCode;
         public final String description;

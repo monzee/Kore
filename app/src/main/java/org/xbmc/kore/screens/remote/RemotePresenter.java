@@ -21,75 +21,86 @@ import java.util.concurrent.FutureTask;
 
 public class RemotePresenter implements Remote.Actions, Remote.UseCases {
 
-    public static final Runnable NOOP = new Runnable() {
-        @Override
-        public void run() {}
-    };
-
-    private static class State {
+    private static class State implements Remote.State {
         HostConnection connection;
         HostInfo info;
         String uriToAddon;
         boolean isSharePending;
     }
 
+    private class ReportError<T> extends Remote.MightFail<T> {
+        ReportError(T callback) {
+            super(callback);
+        }
+
+        @Override
+        public void fail(Throwable error) {
+            report(error);
+            after();
+        }
+
+        protected void after() {}
+    }
+
+    private class OnPlayerEvent implements HostConnectionObserver.PlayerEventsObserver {
+        @Override
+        public void playerOnPlay(
+                GetActivePlayersReturnType getActivePlayerResult,
+                PlayerType.PropertyValue getPropertiesResult,
+                ListType.ItemsAll getItemResult
+        ) {
+
+        }
+
+        @Override
+        public void playerOnPause(
+                GetActivePlayersReturnType getActivePlayerResult,
+                PlayerType.PropertyValue getPropertiesResult,
+                ListType.ItemsAll getItemResult
+        ) {
+
+        }
+
+        @Override
+        public void playerOnStop() {
+
+        }
+
+        @Override
+        public void playerOnConnectionError(int errorCode, String description) {
+
+        }
+
+        @Override
+        public void playerNoResultsYet() {
+
+        }
+
+        @Override
+        public void systemOnQuit() {
+
+        }
+
+        @Override
+        public void inputOnInputRequested(String title, String type, String value) {
+
+        }
+
+        @Override
+        public void observerOnStopObserving() {
+
+        }
+    };
+
     private Remote.Display view;
     private State state;
     private final Runner runner;
     private final Remote.Options options;
     private final Remote.Rpc rpc;
+    private final Remote.MightFail<?> NOOP = new ReportError<>(null);
     private final HostManager host;
     private final HostConnectionObserver hostEvents;
-    private final HostConnectionObserver.PlayerEventsObserver onPlayerEvent =
-            new HostConnectionObserver.PlayerEventsObserver() {
-                @Override
-                public void playerOnPlay(
-                        GetActivePlayersReturnType getActivePlayerResult,
-                        PlayerType.PropertyValue getPropertiesResult,
-                        ListType.ItemsAll getItemResult
-                ) {
-
-                }
-
-                @Override
-                public void playerOnPause(
-                        GetActivePlayersReturnType getActivePlayerResult,
-                        PlayerType.PropertyValue getPropertiesResult,
-                        ListType.ItemsAll getItemResult
-                ) {
-
-                }
-
-                @Override
-                public void playerOnStop() {
-
-                }
-
-                @Override
-                public void playerOnConnectionError(int errorCode, String description) {
-
-                }
-
-                @Override
-                public void playerNoResultsYet() {
-
-                }
-
-                @Override
-                public void systemOnQuit() {
-
-                }
-
-                @Override
-                public void inputOnInputRequested(String title, String type, String value) {
-
-                }
-
-                @Override
-                public void observerOnStopObserving() {
-
-                }
-            };
+    private final HostConnectionObserver.PlayerEventsObserver onPlayerEvent = new OnPlayerEvent();
 
     public RemotePresenter(
             HostManager host,
@@ -106,29 +117,22 @@ public class RemotePresenter implements Remote.Actions, Remote.UseCases {
 
     @Override
     public void bind(Remote.Display view) {
+        if (this.view != null) {
+            throw new RuntimeException("Unbind first before rebinding!");
+        }
         if (host.getHostInfo() == null) {
             view.goToHostAdder();
             return;
         }
         this.view = view;
         hostEvents.registerPlayerObserver(onPlayerEvent, true);
-        runner.once(Task.unit("init", new Producer<State>() {
+        restoreState(new ReportError<>(new Remote.OnRestore() {
             @Override
-            public State apply() throws Throwable {
-                State s = new State();
-                s.connection = host.getConnection();
-                s.info = host.getHostInfo();
-                return s;
+            public void restored(Remote.State state) {
+                //noinspection unchecked
+                RemotePresenter.this.state = (State) state;
             }
-        }), new Continuation<State>() {
-            @Override
-            public void accept(State result, Throwable error) {
-                state = result;
-                if (error != null) {
-                    report(error);
-                }
-            }
-        });
+        }));
         view.initNavigationDrawer();
         view.initTabs();
         view.initActionBar();
@@ -140,7 +144,7 @@ public class RemotePresenter implements Remote.Actions, Remote.UseCases {
     public void unbind() {
         view = null;
         hostEvents.unregisterPlayerObserver(onPlayerEvent);
-        runner.schedule(Task.just("init", state));
+        saveState(state);
     }
 
     @Override
@@ -152,35 +156,20 @@ public class RemotePresenter implements Remote.Actions, Remote.UseCases {
         } else if (!state.isSharePending) {
             state.isSharePending = true;
             state.uriToAddon = videoUri;
-            runner.schedule(
-                    Task.unit("play-shared-video", new Producer<List<GetActivePlayersReturnType>>() {
+            maybeClearPlaylist(new ReportError<Remote.OnMaybeClearPlaylist>(
+                    new Remote.OnMaybeClearPlaylist() {
                         @Override
-                        public List<GetActivePlayersReturnType> apply() throws Throwable {
-                            return rpc.getActivePlayers();
-                        }
-                    }).map(new Task.Transform<List<GetActivePlayersReturnType>, Boolean>() {
-                        @Override
-                        public Boolean apply(
-                                List<GetActivePlayersReturnType> players
-                        ) throws Throwable {
-                            return runAndGet(clearPlaylistIfPlaying(players));
-                        }
-                    }).map(new Task.Transform<Boolean, Void>() {
-                        @Override
-                        public Void apply(Boolean start) throws Throwable {
-                            return runAndGet(enqueueFile(state.uriToAddon, start));
-                        }
-                    }),
-                    new Continuation<Void>() {
-                        @Override
-                        public void accept(Void result, Throwable error) {
+                        public void playlistMaybeCleared(boolean decision) {
                             state.isSharePending = false;
-                            if (error != null) {
-                                report(error);
-                            }
+                            enqueueFile(state.uriToAddon, decision, NOOP);
                         }
                     }
-            );
+            ) {
+                @Override
+                protected void after() {
+                    state.isSharePending = false;
+                }
+            });
         }
     }
 
@@ -201,39 +190,84 @@ public class RemotePresenter implements Remote.Actions, Remote.UseCases {
     }
 
     @Override
-    public FutureTask<Boolean> clearPlaylistIfPlaying(
-            List<GetActivePlayersReturnType> players
-    ) {
-        for (GetActivePlayersReturnType player : players) {
-            if (player.type.equals(GetActivePlayersReturnType.VIDEO)) {
-                return new FutureTask<>(new Callable<Boolean>() {
-                    @Override
-                    public Boolean call() {
-                        rpc.clearPlaylist();
-                        return true;
-                    }
-                });
-            }
-        }
-        return new FutureTask<>(NOOP, false);
+    public void saveState(Remote.State state) {
+        runner.schedule(Task.just("init", state));
     }
 
     @Override
-    public FutureTask<Void> enqueueFile(
-            final String videoUri,
-            final boolean startPlaylist
-    ) {
-        return new FutureTask<>(new Runnable() {
+    public void restoreState(final Remote.MightFail<? extends Remote.OnRestore> then) {
+        runner.once(Task.unit("init", new Producer<State>() {
             @Override
-            public void run() {
+            public State apply() throws Throwable {
+                State s = new State();
+                s.connection = host.getConnection();
+                s.info = host.getHostInfo();
+                return s;
+            }
+        }), new Continuation<State>() {
+            @Override
+            public void accept(State result, Throwable error) {
+                if (error == null) {
+                    then.ok.restored(result);
+                } else {
+                    then.fail(error);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void maybeClearPlaylist(
+            final Remote.MightFail<? extends Remote.OnMaybeClearPlaylist> then
+    ) {
+        runner.schedule(Task.unit("playlist-cleared?", new Producer<Boolean>() {
+            @Override
+            public Boolean apply() throws Throwable {
+                for (GetActivePlayersReturnType player : rpc.getActivePlayers()) {
+                    if (player.type.equals(GetActivePlayersReturnType.VIDEO)) {
+                        return false;
+                    }
+                }
+                rpc.clearPlaylist();
+                return true;
+            }
+        }), new Continuation<Boolean>() {
+            @Override
+            public void accept(Boolean result, Throwable error) {
+                if (error == null) {
+                    then.ok.playlistMaybeCleared(result);
+                } else {
+                    then.fail(error);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void enqueueFile(
+            final String videoUri,
+            final boolean startPlaylist,
+            final Remote.MightFail<?> then
+    ) {
+        runner.schedule(Task.unit("enqueue-" + videoUri, new Producer<Void>() {
+            @Override
+            public Void apply() throws Throwable {
                 PlaylistType.Item item = new PlaylistType.Item();
                 item.file = videoUri;
                 rpc.addToPlaylist(item);
                 if (startPlaylist) {
                     rpc.openPlaylist();
                 }
+                return null;
             }
-        }, null);
+        }), new Continuation<Void>() {
+            @Override
+            public void accept(Void result, Throwable error) {
+                if (error != null) {
+                    then.fail(error);
+                }
+            }
+        });
     }
 
     private void report(Remote.Message msg) {
@@ -244,13 +278,13 @@ public class RemotePresenter implements Remote.Actions, Remote.UseCases {
 
     private void report(Throwable error) {
         if (view != null) {
-            Remote.RpcError e = error instanceof Remote.RpcError
-                    ? (Remote.RpcError) error
-                    : new Remote.RpcError(
+            Remote.RpcError e = error instanceof Remote.RpcError ?
+                (Remote.RpcError) error :
+                new Remote.RpcError(
                     Remote.Message.GENERAL_ERROR,
                     0,
                     error.getLocalizedMessage()
-            );
+                );
             view.tell(e.type, e.description);
         } else {
             error.printStackTrace();
@@ -283,13 +317,6 @@ public class RemotePresenter implements Remote.Actions, Remote.UseCases {
 
     private String tryParseYoutubeUrl(String query) {
         return null;
-    }
-
-    private static <T> T runAndGet(
-            FutureTask<T> future
-    ) throws ExecutionException, InterruptedException {
-        future.run();
-        return future.get();
     }
 
 }
