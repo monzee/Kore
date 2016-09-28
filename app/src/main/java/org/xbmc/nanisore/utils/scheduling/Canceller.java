@@ -1,4 +1,4 @@
-package org.xbmc.kore.utils.scheduling;
+package org.xbmc.nanisore.utils.scheduling;
 
 /**
  * Interface for objects returned by a runner

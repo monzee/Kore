@@ -1,4 +1,4 @@
-package org.xbmc.kore.utils.scheduling;
+package org.xbmc.nanisore.utils.scheduling;
 
 import org.junit.Test;
 
@@ -7,7 +7,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class CachingRunnerTest {
 

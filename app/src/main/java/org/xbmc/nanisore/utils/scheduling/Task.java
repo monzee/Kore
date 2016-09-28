@@ -1,4 +1,4 @@
-package org.xbmc.kore.utils.scheduling;
+package org.xbmc.nanisore.utils.scheduling;
 
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;

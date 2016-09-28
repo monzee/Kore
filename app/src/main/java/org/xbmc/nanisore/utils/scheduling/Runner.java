@@ -1,4 +1,4 @@
-package org.xbmc.kore.utils.scheduling;
+package org.xbmc.nanisore.utils.scheduling;
 
 /**
  * Interface for running tasks and handling the (possibly erroneous) result
@@ -22,6 +22,7 @@ public interface Runner {
      *
      * @return Who cares about the canceller of a fire-and-forget task?
      */
+    @SuppressWarnings("rawtypes")
     Canceller schedule(Producer action);
 
     /**
@@ -33,5 +34,11 @@ public interface Runner {
      * before the handler is called.
      */
     <T> void once(Producer<T> task, Continuation<T> handler);
+
+    /**
+     * Fire-forget-then-destroy
+     */
+    @SuppressWarnings("rawtypes")
+    void once(Producer task);
 
 }

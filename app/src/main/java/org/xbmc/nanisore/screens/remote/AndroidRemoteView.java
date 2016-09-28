@@ -1,4 +1,4 @@
-package org.xbmc.kore.screens.remote;
+package org.xbmc.nanisore.screens.remote;
 
 import android.content.Intent;
 import android.graphics.Point;
@@ -8,14 +8,13 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import android.widget.ImageView;
-import android.widget.Toast;
+
+import com.squareup.picasso.Picasso;
 
 import org.xbmc.kore.R;
-import org.xbmc.kore.host.HostManager;
 import org.xbmc.kore.ui.NavigationDrawerFragment;
 import org.xbmc.kore.ui.NowPlayingFragment;
 import org.xbmc.kore.ui.PlaylistFragment;
@@ -24,17 +23,17 @@ import org.xbmc.kore.ui.SendTextDialogFragment;
 import org.xbmc.kore.ui.hosts.AddHostActivity;
 import org.xbmc.kore.ui.views.CirclePageIndicator;
 import org.xbmc.kore.utils.TabsAdapter;
-import org.xbmc.kore.utils.UIUtils;
+import org.xbmc.nanisore.screens.AndroidLogger;
+import org.xbmc.nanisore.utils.Lazy;
 
 import java.util.Arrays;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
-import com.squareup.picasso.Picasso;
 
-public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListener {
+public class AndroidRemoteView extends AndroidLogger implements Remote.Ui, ViewPager.OnPageChangeListener {
 
-    private static final String TAG = "RemoteMvp";
+    private static final String TAG = AndroidRemoteView.class.getSimpleName();
     private static final int FRAGMENT_NOW_PLAYING = 0;
     private static final int FRAGMENT_REMOTE = 1;
     private static final int FRAGMENT_PLAYLIST = 2;
@@ -42,10 +41,21 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
             R.string.now_playing, R.string.remote, R.string.playlist
     };
 
+    private final Lazy<Point> displaySize = new Lazy<Point>() {
+        @Override
+        protected Point produce() {
+            Point value = new Point();
+            activity.getWindowManager().getDefaultDisplay().getSize(value);
+            return value;
+        }
+    };
+
+    private final Remote.Actions presenter;
     private final AppCompatActivity activity;
     private final FragmentManager fragments;
     private final Picasso picasso;
     private NavigationDrawerFragment navigationDrawerFragment;
+    private boolean hasBackgroundImage;
 
     @InjectView(R.id.background_image)
     ImageView backgroundImage;
@@ -62,16 +72,18 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
     @InjectView(R.id.drawer_layout)
     DrawerLayout drawerLayout;
 
-    public RemoteView(AppCompatActivity activity, Picasso picasso) {
+    public AndroidRemoteView(
+            Remote.Actions presenter,
+            AppCompatActivity activity,
+            Picasso picasso
+    ) {
+        super(activity.getApplicationContext(), TAG);
+        this.presenter = presenter;
         this.activity = activity;
         this.picasso = picasso;
         fragments = activity.getSupportFragmentManager();
         ButterKnife.inject(this, activity);
-    }
-
-    @Override
-    public void tell(String message) {
-        Toast.makeText(activity, message, Toast.LENGTH_SHORT).show();
+        hasBackgroundImage = backgroundImage.getDrawable() != null;
     }
 
     @Override
@@ -100,21 +112,6 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
     }
 
     @Override
-    public void log(Remote.Log level, String message) {
-        switch (level) {
-            case D:
-                Log.d(TAG, message);
-                break;
-            case I:
-                Log.i(TAG, message);
-                break;
-            case E:
-                Log.e(TAG, message);
-                break;
-        }
-    }
-
-    @Override
     public void goToHostAdder() {
         Intent i = new Intent(activity, AddHostActivity.class);
         i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -131,7 +128,7 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
     }
 
     @Override
-    public void initTabs() {
+    public void initTabs(int activeTab) {
         TabsAdapter tabsAdapter = new TabsAdapter(activity, fragments)
                 .addTab(NowPlayingFragment.class, null, R.string.now_playing, FRAGMENT_NOW_PLAYING)
                 .addTab(RemoteFragment.class, null, R.string.remote, FRAGMENT_REMOTE)
@@ -139,7 +136,7 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
         viewPager.setAdapter(tabsAdapter);
         pageIndicator.setViewPager(viewPager);
         pageIndicator.setOnPageChangeListener(this);
-        viewPager.setCurrentItem(FRAGMENT_REMOTE);
+        viewPager.setCurrentItem(activeTab);
         viewPager.setOffscreenPageLimit(2);
     }
 
@@ -184,27 +181,34 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
     public void setBackgroundImage(String url) {
         if (url == null) {
             backgroundImage.setImageDrawable(null);
-            pageIndicator.setOnPageChangeListener(this);
+            hasBackgroundImage = false;
         } else {
-            Point displaySize = new Point();
-            activity.getWindowManager().getDefaultDisplay().getSize(displaySize);
-
+            Point size = displaySize.get();
             picasso.load(url)
-                .resize(displaySize.x, displaySize.y / 2)
+                .resize(size.x, size.y / 2)
                 .centerCrop()
                 .into(backgroundImage);
-
-            pinBackground(backgroundImage.getViewTreeObserver(), displaySize.x / 4);
+            positionImage(backgroundImage.getViewTreeObserver(), size.x / 4);
+            hasBackgroundImage = true;
         }
     }
 
     @Override
-    public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-        // noop
+    public void onPageScrolled(
+            int position,
+            float positionOffset,
+            int positionOffsetPixels
+    ) {
+        if (hasBackgroundImage) {
+            int pixelsPerPage = displaySize.get().x / 4;
+            int offsetX = (int) ((position - 1 + positionOffset) * pixelsPerPage);
+            backgroundImage.scrollTo(offsetX, 0);
+        }
     }
 
     @Override
     public void onPageSelected(int position) {
+        presenter.didSwitchTab(position);
         setToolbarTitle(getString(TAB_TITLES[position]));
     }
 
@@ -221,41 +225,19 @@ public class RemoteView implements Remote.Display, ViewPager.OnPageChangeListene
         }
     }
 
-    private void pinBackground(final ViewTreeObserver viewTreeObserver, final int pixelsPerPage) {
+    private void positionImage(
+            final ViewTreeObserver viewTreeObserver,
+            final int pixelsPerPage
+    ) {
         viewTreeObserver.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
                 viewTreeObserver.removeOnPreDrawListener(this);
-                // Position the image
-                int offsetX =  (viewPager.getCurrentItem() - 1) * pixelsPerPage;
+                int offsetX = (viewPager.getCurrentItem() - 1) * pixelsPerPage;
                 backgroundImage.scrollTo(offsetX, 0);
-
-                pageIndicator.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
-                    @Override
-                    public void onPageScrolled(
-                            int position, float positionOffset, int positionOffsetPixels
-                    ) {
-                        int offsetX = (int) ((position - 1 + positionOffset) * pixelsPerPage);
-                        backgroundImage.scrollTo(offsetX, 0);
-                    }
-
-                    @Override
-                    public void onPageSelected(int position) {
-                        setToolbarTitle(getString(TAB_TITLES[position]));
-                    }
-
-                    @Override
-                    public void onPageScrollStateChanged(int state) {
-                        // noop
-                    }
-                });
                 return true;
             }
         });
-    }
-
-    private String getString(int resId, Object... fmtArgs) {
-        return activity.getString(resId, fmtArgs);
     }
 
 }

@@ -1,4 +1,4 @@
-package org.xbmc.kore.utils.scheduling;
+package org.xbmc.nanisore.utils.scheduling;
 
 public class BlockingRunner extends BaseRunner {
 
@@ -19,11 +19,6 @@ public class BlockingRunner extends BaseRunner {
         }
         handler.accept(value, error);
         return NOOP;
-    }
-
-    @Override
-    public <T> void once(Producer<T> task, Continuation<T> handler) {
-        schedule(task, handler).cancel();
     }
 
 }

@@ -1,4 +1,4 @@
-package org.xbmc.kore.utils.scheduling;
+package org.xbmc.nanisore.utils.scheduling;
 
 import android.content.Context;
 import android.os.AsyncTask;
@@ -19,21 +19,21 @@ import java.util.concurrent.Future;
  * Values are kept until the activity is killed, meaning they survive config
  * changes like device rotation.
  */
-public class LoaderRunner extends BaseRunner {
+public class AndroidLoaderRunner extends BaseRunner {
 
     private static class Loadable<T> extends Loader<Task.Result<T>> {
-        // why doesn't this warn me?
-        private static final ExecutorService jobs = (ExecutorService) AsyncTask.THREAD_POOL_EXECUTOR;
+        private final ExecutorService jobs;
         private final Task<T> task;
         private final Handler uiHandler;
         private volatile boolean stale = true;
         private Future<?> pending;
         private Task.Result<T> result;
 
-        public Loadable(Context context, Task<T> task) {
+        Loadable(Context context, Task<T> task, ExecutorService jobs) {
             super(context);
             uiHandler = new Handler(Looper.getMainLooper());
             this.task = task;
+            this.jobs = jobs;
         }
 
         @Override
@@ -93,20 +93,18 @@ public class LoaderRunner extends BaseRunner {
         }
     }
 
-    private static class Callback<T> implements LoaderManager.LoaderCallbacks<Task.Result<T>> {
-        private final Context context;
+    private class Callback<T> implements LoaderManager.LoaderCallbacks<Task.Result<T>> {
         private final Task<T> task;
         private final Continuation<T> handler;
 
-        private Callback(Context context, Task<T> task, Continuation<T> handler) {
-            this.context = context;
+        Callback(Task<T> task, Continuation<T> handler) {
             this.task = task;
             this.handler = handler;
         }
 
         @Override
         public Loader<Task.Result<T>> onCreateLoader(int id, Bundle args) {
-            return new Loadable<>(context, task);
+            return new Loadable<>(context, task, jobs);
         }
 
         @Override
@@ -121,26 +119,36 @@ public class LoaderRunner extends BaseRunner {
 
     private final LoaderManager manager;
     private final Context context;
+    private final ExecutorService jobs;
 
-    public LoaderRunner(FragmentActivity activity) {
-        manager = activity.getSupportLoaderManager();
-        context = activity.getApplicationContext();
+    public AndroidLoaderRunner(FragmentActivity activity) {
+        this(activity, (ExecutorService) AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
-    public LoaderRunner(Fragment fragment) {
+    public AndroidLoaderRunner(Fragment fragment) {
+        this(fragment, (ExecutorService) AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+    public AndroidLoaderRunner(FragmentActivity activity, ExecutorService jobs) {
+        manager = activity.getSupportLoaderManager();
+        context = activity.getApplicationContext();
+        this.jobs = jobs;
+    }
+
+    public AndroidLoaderRunner(Fragment fragment, ExecutorService jobs) {
         manager = fragment.getLoaderManager();
-        context = fragment.getContext();
+        context = fragment.getContext().getApplicationContext();
+        this.jobs = jobs;
     }
 
     /**
-     * Runs a task in a background thread then calls the handler in the
-     * UI thread.
+     * Runs a task in the background then calls the handler in the UI thread.
      *
-     * If there exists a loader with the same id as the task, its value will
-     * be passed instead in the handler and this task is ignored and never
+     * If there exists a loader with the same id as the task, that loader will
+     * be passed instead to the handler and this task is ignored and never
      * executed.
      *
-     * @param task ALWAYS USE A {@see Task<T>} INSTANCE WITH AN EXPLICIT ID!
+     * @param task ALWAYS USE A {@link Task<T>} INSTANCE WITH AN EXPLICIT ID!
      *             Otherwise a new loader will be made every time and there's
      *             no point in using this instead of a simpler impl.
      *
@@ -153,7 +161,7 @@ public class LoaderRunner extends BaseRunner {
         Task<T> t = Task.unit(task);
         final int id = t.id.hashCode();
         final Loader<Task.Result<T>> loader =
-                manager.initLoader(id, null, new Callback<>(context, t, handler));
+                manager.initLoader(id, null, new Callback<>(t, handler));
         return new Canceller() {
             @Override
             public void cancel() {

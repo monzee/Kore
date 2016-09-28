@@ -83,6 +83,25 @@
         <meta-data android:name="com.sec.android.multiwindow.MINIMUM_SIZE_H" android:value="598.0dip" />
 
         <meta-data android:name="com.lge.support.SPLIT_WINDOW" android:value="true" />
+
+        <!-- refactored stuff -->
+        <activity
+            android:name="org.xbmc.nanisore.RemoteActivity"
+            android:label="Nani Sore" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.MULTIWINDOW_LAUNCHER" />
+            </intent-filter>
+
+            <!-- Intent filter for sharing from youtube player -->
+            <intent-filter android:label="Kodi/Youtube Plugin">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+        </activity>
+
     </application>
 
 </manifest>
