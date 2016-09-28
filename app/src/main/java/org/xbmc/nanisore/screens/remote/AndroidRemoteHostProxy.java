@@ -36,7 +36,7 @@ public class AndroidRemoteHostProxy implements Remote.Rpc {
     }
 
     @Override
-    public void clearPlaylist() {
+    public void clearVideoPlaylist() {
         execSync(
                 new Playlist.Clear(PlaylistType.VIDEO_PLAYLISTID),
                 Remote.Message.CANNOT_ENQUEUE_FILE
@@ -44,7 +44,7 @@ public class AndroidRemoteHostProxy implements Remote.Rpc {
     }
 
     @Override
-    public void addToPlaylist(PlaylistType.Item item) {
+    public void addToVideoPlaylist(PlaylistType.Item item) {
         execSync(
                 new Playlist.Add(PlaylistType.VIDEO_PLAYLISTID, item),
                 Remote.Message.CANNOT_ENQUEUE_FILE
@@ -52,7 +52,7 @@ public class AndroidRemoteHostProxy implements Remote.Rpc {
     }
 
     @Override
-    public void openPlaylist() {
+    public void openVideoPlaylist() {
         execSync(
                 new Player.Open(Player.Open.TYPE_PLAYLIST, PlaylistType.VIDEO_PLAYLISTID),
                 Remote.Message.CANNOT_PLAY_FILE

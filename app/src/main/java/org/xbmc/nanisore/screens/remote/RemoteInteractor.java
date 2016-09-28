@@ -30,6 +30,7 @@ public class RemoteInteractor implements Remote.UseCases {
             public Remote.State apply() {
                 Remote.State s = new Remote.State();
                 s.activeTab = 1;
+                s.sharedVideoEnqueued = false;
                 return s;
             }
         }), new Continuation<Remote.State>() {
@@ -52,7 +53,7 @@ public class RemoteInteractor implements Remote.UseCases {
                         return false;
                     }
                 }
-                rpc.clearPlaylist();
+                rpc.clearVideoPlaylist();
                 return true;
             }
         }), new Continuation<Boolean>() {
@@ -78,9 +79,9 @@ public class RemoteInteractor implements Remote.UseCases {
             public Void apply() throws InterruptedException {
                 PlaylistType.Item item = new PlaylistType.Item();
                 item.file = videoUri;
-                rpc.addToPlaylist(item);
+                rpc.addToVideoPlaylist(item);
                 if (startPlaylist) {
-                    rpc.openPlaylist();
+                    rpc.openVideoPlaylist();
                 }
                 return null;
             }

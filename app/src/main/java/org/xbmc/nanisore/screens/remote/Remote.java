@@ -97,6 +97,7 @@ public interface Remote {
 
     class State {
         int activeTab;
+        boolean sharedVideoEnqueued;
     }
 
     /**
@@ -109,9 +110,9 @@ public interface Remote {
     interface Rpc {
         void dispose();
         List<PlayerType.GetActivePlayersReturnType> getActivePlayers();
-        void clearPlaylist();
-        void addToPlaylist(PlaylistType.Item item);
-        void openPlaylist();
+        void clearVideoPlaylist();
+        void addToVideoPlaylist(PlaylistType.Item item);
+        void openVideoPlaylist();
         void increaseVolume();
         void decreaseVolume();
     }

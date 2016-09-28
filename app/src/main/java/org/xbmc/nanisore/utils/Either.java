@@ -1,6 +1,6 @@
 package org.xbmc.nanisore.utils;
 
-public class Either<L extends Throwable, R> {
+public class Either<L extends Throwable, R> implements Try<R> {
     private volatile boolean done;
     private final Object lock = new Object();
     private L left;

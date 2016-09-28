@@ -17,6 +17,8 @@ public interface Runner {
      */
     <T> Canceller schedule(Producer<T> task, Continuation<T> handler);
 
+    <T> Canceller schedule(Producer<T> task, Handler<T> handler);
+
     /**
      * Fire-and-forget
      *
@@ -34,6 +36,8 @@ public interface Runner {
      * before the handler is called.
      */
     <T> void once(Producer<T> task, Continuation<T> handler);
+
+    <T> void once(Producer<T> task, Handler<T> handler);
 
     /**
      * Fire-forget-then-destroy

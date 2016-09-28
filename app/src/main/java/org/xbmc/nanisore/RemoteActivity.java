@@ -1,8 +1,11 @@
 package org.xbmc.nanisore;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.view.KeyEvent;
 import android.view.Menu;
 
 import com.squareup.picasso.Picasso;
@@ -43,6 +46,24 @@ public class RemoteActivity extends BaseActivity {
     protected void onResume() {
         super.onResume();
         presenter.bind(view);
+        Intent i = getIntent();
+        String action = i.getAction();
+        if (action != null) {
+            switch (action) {
+                case Intent.ACTION_SEND:
+                    String extra = i.getStringExtra(Intent.EXTRA_TEXT);
+                    if (extra != null) {
+                        presenter.didShareVideo(uriFromYoutubeShare(extra));
+                    }
+                    break;
+                case Intent.ACTION_VIEW:
+                    String data = i.getDataString();
+                    if (data != null) {
+                        presenter.didShareVideo(data);
+                    }
+                    break;
+            }
+        }
     }
 
     @Override
@@ -58,6 +79,33 @@ public class RemoteActivity extends BaseActivity {
             return true;
         }
         return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() != KeyEvent.ACTION_DOWN) {
+            return super.dispatchKeyEvent(event);
+        }
+        switch (event.getKeyCode()) {
+            case KeyEvent.KEYCODE_VOLUME_UP:
+                presenter.didPressVolumeUp();
+                return true;
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+                presenter.didPressVolumeDown();
+                return true;
+            default:
+                return super.dispatchKeyEvent(event);
+        }
+    }
+
+    private String uriFromYoutubeShare(String extra) {
+        String[] parts = extra.split("\\s+");
+        for (String part : parts) {
+            if (part.startsWith("http://") || part.startsWith("https://")) {
+                return part;
+            }
+        }
+        return "";
     }
 
 }

@@ -7,8 +7,14 @@ import org.xbmc.kore.jsonrpc.type.ListType;
 import org.xbmc.kore.jsonrpc.type.PlayerType;
 import org.xbmc.kore.jsonrpc.type.PlayerType.GetActivePlayersReturnType;
 import org.xbmc.nanisore.utils.Lazy;
+import org.xbmc.nanisore.utils.Log;
 import org.xbmc.nanisore.utils.MightFail;
 import org.xbmc.nanisore.utils.Options;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class RemotePresenter implements Remote.Actions {
 
@@ -75,7 +81,7 @@ public class RemotePresenter implements Remote.Actions {
 
     private final Lazy<Boolean> useVolumeKeys = new Lazy<Boolean>() {
         @Override
-        protected Boolean produce() {
+        protected Boolean value() {
             return isEnabled(Remote.Option.USE_HARDWARE_VOLUME_KEYS);
         }
     };
@@ -85,7 +91,6 @@ public class RemotePresenter implements Remote.Actions {
     private final Options options;
     private final Remote.UseCases will;
     private final Remote.Rpc rpc;
-    private final MightFail<?> noOp = new ReportError<>(null);
     private final HostManager host;
     private final HostConnectionObserver hostEvents;
     private final HostConnectionObserver.PlayerEventsObserver onPlayerEvent = new OnPlayerEvent();
@@ -139,18 +144,26 @@ public class RemotePresenter implements Remote.Actions {
 
     @Override
     public void didShareVideo(String uriString) {
-        String videoUri = tryParseYoutubeUrl(uriString);
-        videoUri = videoUri != null ? videoUri : tryParseVimeoUrl(uriString);
-        if (videoUri == null) {
+        Log.I.to(view, "attempting to share: %s", uriString);
+        try {
+            URL url = new URL(uriString);
+            String videoUri = tryParseYoutubeUrl(url);
+            videoUri = videoUri != null ? videoUri : tryParseVimeoUrl(url);
+            if (videoUri == null) {
+                report(Remote.Message.CANNOT_SHARE_VIDEO);
+            } else {
+                Log.I.to(view, "attempting to enqueue: %s", videoUri);
+                final String uriToAddon = videoUri;
+                will.maybeClearPlaylist(new ReportError<>(new Remote.OnMaybeClearPlaylist() {
+                    @Override
+                    public void playlistMaybeCleared(boolean wasCleared) {
+                        will.enqueueFile(uriToAddon, wasCleared, new ReportError<>(null));
+                    }
+                }));
+            }
+        } catch (MalformedURLException e) {
+            Log.E.to(view, "failed to parse video url: %s", uriString);
             report(Remote.Message.CANNOT_SHARE_VIDEO);
-        } else {
-            final String uriToAddon = videoUri;
-            will.maybeClearPlaylist(new ReportError<>(new Remote.OnMaybeClearPlaylist() {
-                @Override
-                public void playlistMaybeCleared(boolean wasCleared) {
-                    will.enqueueFile(uriToAddon, wasCleared, noOp);
-                }
-            }));
         }
     }
 
@@ -261,12 +274,43 @@ public class RemotePresenter implements Remote.Actions {
         return options.get(key, def);
     }
 
-    private String tryParseVimeoUrl(String path) {
-        return null;
+    private String tryParseVimeoUrl(URL url) {
+        String host = url.getHost();
+        if (host == null || !host.endsWith("vimeo.com")) {
+            return null;
+        }
+        return pluginUriFromPath(url, "vimeo");
     }
 
-    private String tryParseYoutubeUrl(String query) {
-        return null;
+    private String tryParseYoutubeUrl(URL url) {
+        String host = url.getHost();
+        if (host == null || !(host.endsWith("youtube.com") || host.endsWith("youtu.be"))) {
+            return null;
+        }
+        if (host.endsWith("youtu.be")) {
+            return pluginUriFromPath(url, "youtube");
+        } else {
+            String query = url.getQuery();
+            if (query == null) {
+                return null;
+            }
+            Matcher getVideoId = Pattern.compile("(?:^|&)v=([^&]+)").matcher(query);
+            if (!getVideoId.find()) {
+                return null;
+            }
+            return "plugin://plugin.video.youtube/play/?video_id=" + getVideoId.group(1);
+        }
     }
 
+    private String pluginUriFromPath(URL url, String pluginName) {
+        String path = url.getPath();
+        if (path == null || path.length() < 1) {
+            return null;
+        }
+        return String.format(
+                "plugin://plugin.video.%s/play/?video_id=%s",
+                pluginName,
+                path.substring(1).split("/", 2)[0]
+        );
+    }
 }

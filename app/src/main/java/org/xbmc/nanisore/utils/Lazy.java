@@ -5,10 +5,10 @@ public abstract class Lazy<T> {
 
     public T get() {
         if (value == null) {
-            value = produce();
+            value = value();
         }
         return value;
     }
 
-    protected abstract T produce();
+    protected abstract T value();
 }

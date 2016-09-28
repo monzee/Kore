@@ -31,8 +31,9 @@ import java.util.Arrays;
 import butterknife.ButterKnife;
 import butterknife.InjectView;
 
-public class AndroidRemoteView extends AndroidLogger implements Remote.Ui, ViewPager.OnPageChangeListener {
-
+public class AndroidRemoteView extends AndroidLogger
+        implements Remote.Ui, ViewPager.OnPageChangeListener
+{
     private static final String TAG = AndroidRemoteView.class.getSimpleName();
     private static final int FRAGMENT_NOW_PLAYING = 0;
     private static final int FRAGMENT_REMOTE = 1;
@@ -43,7 +44,7 @@ public class AndroidRemoteView extends AndroidLogger implements Remote.Ui, ViewP
 
     private final Lazy<Point> displaySize = new Lazy<Point>() {
         @Override
-        protected Point produce() {
+        protected Point value() {
             Point value = new Point();
             activity.getWindowManager().getDefaultDisplay().getSize(value);
             return value;
@@ -116,6 +117,7 @@ public class AndroidRemoteView extends AndroidLogger implements Remote.Ui, ViewP
         Intent i = new Intent(activity, AddHostActivity.class);
         i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        // TODO: this should request a result and not finish.
         activity.startActivity(i);
         activity.finish();
     }
