@@ -1,16 +1,12 @@
 package org.xbmc.nanisore.utils.scheduling;
 
 import org.xbmc.nanisore.utils.Either;
-import org.xbmc.nanisore.utils.Try;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Base class with default implementations for schedule() and once().
- *
- * IMPORTANT! You should override one of the two (or both) binary schedule()
- * methods! The default implementations call each other!
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public abstract class BaseRunner implements Runner {
@@ -21,33 +17,8 @@ public abstract class BaseRunner implements Runner {
     };
 
     @Override
-    public <T> Canceller schedule(Producer<T> task, final Continuation<T> handler) {
-        return schedule(task, new Handler<T>() {
-            @Override
-            public void then(Try<T> result) {
-                try {
-                    handler.accept(result.get(), null);
-                } catch (Throwable e) {
-                    handler.accept(null, e);
-                }
-            }
-        });
-    }
-
-    @Override
     public <T> Canceller schedule(Producer<T> task, final Handler<T> handler) {
-        return schedule(task, new Continuation<T>() {
-            @Override
-            public void accept(T result, Throwable error) {
-                Either<Throwable, T> either = new Either<>();
-                if (error != null) {
-                    either.left(error);
-                } else {
-                    either.right(result);
-                }
-                handler.then(either);
-            }
-        });
+        return schedule(task, toContinuation(handler));
     }
 
     @Override
@@ -56,27 +27,13 @@ public abstract class BaseRunner implements Runner {
     }
 
     @Override
-    public <T> void once(final Producer<T> task, final Continuation<T> handler) {
-        once(task, new Handler<T>() {
-            @Override
-            public void then(Try<T> result) {
-                try {
-                    handler.accept(result.get(), null);
-                } catch (Throwable e) {
-                    handler.accept(null, e);
-                }
-            }
-        });
-    }
-
-    @Override
-    public <T> void once(final Producer<T> task, final Handler<T> handler) {
+    public <T> void once(Producer<T> task, final Continuation<T> handler) {
         final AtomicReference<Canceller> canceller = new AtomicReference<>();
         final AtomicBoolean shouldCancelNow = new AtomicBoolean(false);
-        canceller.set(schedule(task, new Handler<T>() {
+        canceller.set(schedule(task, new Continuation<T>() {
             @Override
-            public void then(Try<T> result) {
-                handler.then(result);
+            public void accept(T result, Throwable error) {
+                handler.accept(result, error);
                 Canceller c = canceller.get();
                 if (c != null) {
                     c.cancel();
@@ -97,8 +54,27 @@ public abstract class BaseRunner implements Runner {
     }
 
     @Override
+    public <T> void once(Producer<T> task, final Handler<T> handler) {
+        once(task, toContinuation(handler));
+    }
+
+    @Override
     public void once(Producer task) {
         once(task, NOOP);
     }
 
+    private static <T> Continuation<T> toContinuation(final Handler<T> handler) {
+        return new Continuation<T>() {
+            @Override
+            public void accept(T result, Throwable error) {
+                Either<Throwable, T> either = new Either<>();
+                if (error != null) {
+                    either.left(error);
+                } else {
+                    either.right(result);
+                }
+                handler.then(either);
+            }
+        };
+    }
 }

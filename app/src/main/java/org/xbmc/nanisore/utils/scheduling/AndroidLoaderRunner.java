@@ -16,8 +16,8 @@ import java.util.concurrent.Future;
 /**
  * Runs tasks in a loader.
  *
- * Values are kept until the activity is killed, meaning they survive config
- * changes like device rotation.
+ * Values are kept until the user explicitly leaves the activity, meaning
+ * they survive config changes like device rotation.
  */
 public class AndroidLoaderRunner extends BaseRunner {
 
@@ -145,16 +145,16 @@ public class AndroidLoaderRunner extends BaseRunner {
      * Runs a task in the background then calls the handler in the UI thread.
      *
      * If there exists a loader with the same id as the task, that loader will
-     * be passed instead to the handler and this task is ignored and never
-     * executed.
+     * be used instead and this task is ignored and never executed.
      *
      * @param task ALWAYS USE A {@link Task<T>} INSTANCE WITH AN EXPLICIT ID!
-     *             Otherwise a new loader will be made every time and there's
-     *             no point in using this instead of a simpler impl.
+     *             Otherwise a new loader will be made every time and there'd
+     *             be no point in using this instead of a simpler impl like
+     *             {@link ExecutorRunner}.
      *
-     * @return The canceller also destroys the loader with the same id as the
-     * task in addition to cancelling it. This allows you to replace the
-     * loader when you don't want to reuse its value.
+     * @return The canceller also destroys the loader with the corresponding
+     * id in addition to cancelling it. This allows you to replace the loader
+     * when you want to invalidate its result.
      */
     @Override
     public <T> Canceller schedule(Producer<T> task, final Continuation<T> handler) {

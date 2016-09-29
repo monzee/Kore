@@ -15,6 +15,7 @@ import android.widget.ImageView;
 import com.squareup.picasso.Picasso;
 
 import org.xbmc.kore.R;
+import org.xbmc.kore.service.ConnectionObserversManagerService;
 import org.xbmc.kore.ui.NavigationDrawerFragment;
 import org.xbmc.kore.ui.NowPlayingFragment;
 import org.xbmc.kore.ui.PlaylistFragment;
@@ -36,7 +37,7 @@ public class AndroidRemoteView extends AndroidLogger
 {
     private static final String TAG = AndroidRemoteView.class.getSimpleName();
     private static final int FRAGMENT_NOW_PLAYING = 0;
-    private static final int FRAGMENT_REMOTE = 1;
+    public static final int FRAGMENT_REMOTE = 1;
     private static final int FRAGMENT_PLAYLIST = 2;
     private static final int[] TAB_TITLES = new int[] {
             R.string.now_playing, R.string.remote, R.string.playlist
@@ -51,7 +52,6 @@ public class AndroidRemoteView extends AndroidLogger
         }
     };
 
-    private final Remote.Actions presenter;
     private final AppCompatActivity activity;
     private final FragmentManager fragments;
     private final Picasso picasso;
@@ -74,12 +74,10 @@ public class AndroidRemoteView extends AndroidLogger
     DrawerLayout drawerLayout;
 
     public AndroidRemoteView(
-            Remote.Actions presenter,
             AppCompatActivity activity,
             Picasso picasso
     ) {
         super(activity.getApplicationContext(), TAG);
-        this.presenter = presenter;
         this.activity = activity;
         this.picasso = picasso;
         fragments = activity.getSupportFragmentManager();
@@ -101,6 +99,9 @@ public class AndroidRemoteView extends AndroidLogger
                 break;
             case CANNOT_PLAY_FILE:
                 tell(getString(R.string.error_play_media_file, fmtArgs));
+                break;
+            case IS_QUITTING:
+                tell(getString(R.string.xbmc_quit));
                 break;
             default:
                 if (fmtArgs.length == 1) {
@@ -130,7 +131,7 @@ public class AndroidRemoteView extends AndroidLogger
     }
 
     @Override
-    public void initTabs(int activeTab) {
+    public void initTabs(boolean fresh) {
         TabsAdapter tabsAdapter = new TabsAdapter(activity, fragments)
                 .addTab(NowPlayingFragment.class, null, R.string.now_playing, FRAGMENT_NOW_PLAYING)
                 .addTab(RemoteFragment.class, null, R.string.remote, FRAGMENT_REMOTE)
@@ -138,13 +139,15 @@ public class AndroidRemoteView extends AndroidLogger
         viewPager.setAdapter(tabsAdapter);
         pageIndicator.setViewPager(viewPager);
         pageIndicator.setOnPageChangeListener(this);
-        viewPager.setCurrentItem(activeTab);
-        viewPager.setOffscreenPageLimit(2);
+        if (fresh) {
+            viewPager.setCurrentItem(FRAGMENT_REMOTE);
+            viewPager.setOffscreenPageLimit(2);
+        }
     }
 
     @Override
     public void initActionBar() {
-        setToolbarTitle(getString(TAB_TITLES[FRAGMENT_REMOTE]));
+        setToolbarTitle(getString(TAB_TITLES[viewPager.getCurrentItem()]));
         activity.setSupportActionBar(toolbar);
         ActionBar actionBar = activity.getSupportActionBar();
         if (actionBar != null) {
@@ -169,8 +172,12 @@ public class AndroidRemoteView extends AndroidLogger
 
     @Override
     public void promptTextToSend() {
-        SendTextDialogFragment dlg = SendTextDialogFragment
-                .newInstance(getString(R.string.send_text));
+        promptTextToSend(getString(R.string.send_text));
+    }
+
+    @Override
+    public void promptTextToSend(String prompt) {
+        SendTextDialogFragment dlg = SendTextDialogFragment.newInstance(prompt);
         dlg.show(fragments, null);
     }
 
@@ -196,6 +203,28 @@ public class AndroidRemoteView extends AndroidLogger
     }
 
     @Override
+    public void startObservingPlayerStatus() {
+        Intent i = new Intent(activity, ConnectionObserversManagerService.class);
+        activity.startService(i);
+    }
+
+    @Override
+    public void refreshPlaylist() {
+        // TODO: redo this when the fragments are refactored
+        String tag = "android:switcher:" + viewPager.getId() + ":3";
+        PlaylistFragment playlistFragment = (PlaylistFragment) fragments
+                .findFragmentByTag(tag);
+        if (playlistFragment != null) {
+            playlistFragment.forceRefreshPlaylist();
+        }
+    }
+
+    @Override
+    public void switchTab(int position) {
+        viewPager.setCurrentItem(position);
+    }
+
+    @Override
     public void onPageScrolled(
             int position,
             float positionOffset,
@@ -210,7 +239,6 @@ public class AndroidRemoteView extends AndroidLogger
 
     @Override
     public void onPageSelected(int position) {
-        presenter.didSwitchTab(position);
         setToolbarTitle(getString(TAB_TITLES[position]));
     }
 
@@ -234,7 +262,9 @@ public class AndroidRemoteView extends AndroidLogger
         viewTreeObserver.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
-                viewTreeObserver.removeOnPreDrawListener(this);
+                if (viewTreeObserver.isAlive()) {
+                    viewTreeObserver.removeOnPreDrawListener(this);
+                }
                 int offsetX = (viewPager.getCurrentItem() - 1) * pixelsPerPage;
                 backgroundImage.scrollTo(offsetX, 0);
                 return true;

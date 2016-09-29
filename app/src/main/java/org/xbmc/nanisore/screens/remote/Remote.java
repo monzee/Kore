@@ -13,14 +13,18 @@ public interface Remote {
         void tell(Message message, Object... fmtArgs);
         void goToHostAdder();
         void initNavigationDrawer();
-        void initTabs(int activeTab);
+        void initTabs(boolean fresh);
         void initActionBar();
         void toggleKeepAboveLockScreen(boolean enabled);
         void toggleKeepScreenOn(boolean enabled);
         boolean shouldInflateMenu();
         void promptTextToSend();
+        void promptTextToSend(String prompt);
         void setToolbarTitle(String title);
         void setBackgroundImage(String url);
+        void startObservingPlayerStatus();
+        void refreshPlaylist();
+        void switchTab(int position);
     }
 
     interface Actions {
@@ -31,7 +35,6 @@ public interface Remote {
         void didPressVolumeDown();
         void didChoose(MenuAction action);
         void didSendText(String text, boolean done);
-        void didSwitchTab(int position);
     }
 
     interface UseCases {
@@ -69,19 +72,25 @@ public interface Remote {
         /**
          * Called if the user intended to share a YouTube/Vimeo URL.
          *
-         * The enqueued file should be played immediately if the playlist was
-         * cleared.
-         *
          * @param videoUri Should be a valid Kodi plugin url.
-         * @param then Does not do anything on success; will call the error
-         *             handler otherwise.
+         * @param startPlaying The enqueued file should be played immediately
+         *                     if the playlist was cleared.
+         * @param then Doesn't yield anything useful, so just run an action on
+         *             success.
          */
-        void enqueueFile(String videoUri, boolean startPlaying, MightFail<?> then);
+        void enqueueFile(
+                String videoUri,
+                boolean startPlaying,
+                MightFail<? extends Runnable> then
+        );
 
         /**
          * Run action in the background and return immediately.
          *
          * Don't care if it succeeds or fails. It will probably succeed.
+         *
+         * Meant for blocking actions. Async calls are already fire-and-forget
+         * if you don't attach a listener.
          */
         void fireAndForget(Runnable action);
 
@@ -96,25 +105,39 @@ public interface Remote {
     }
 
     class State {
-        int activeTab;
-        boolean sharedVideoEnqueued;
+        boolean fresh = true;
+        boolean isHostPresent;
+        String videoToShare;
+        String imageUrl;
+        boolean isObservingPlayer;
     }
 
     /**
-     * Synchronously wraps the RPC classes needed by this screen.
+     * Facade to the various RPC classes needed by this screen.
      *
-     * Every method in this interface should block until the remote call has
-     * returned, even the void methods. Any errors thrown should be an instance
-     * of RpcError for proper feedback.
+     * Methods starting with 'try' are synchronous and should probably be run
+     * by a {@link org.xbmc.nanisore.utils.scheduling.Runner}. The async calls
+     * may fail but the caller will never know nor have a chance to log.
      */
     interface Rpc {
         void dispose();
-        List<PlayerType.GetActivePlayersReturnType> getActivePlayers();
-        void clearVideoPlaylist();
-        void addToVideoPlaylist(PlaylistType.Item item);
-        void openVideoPlaylist();
+        List<PlayerType.GetActivePlayersReturnType> tryGetActivePlayers();
+        void tryClearVideoPlaylist();
+        void tryAddToVideoPlaylist(PlaylistType.Item item);
+        void tryOpenVideoPlaylist();
+        void tryWakeUp();
         void increaseVolume();
         void decreaseVolume();
+        void sendText(String text, boolean done);
+        void quit();
+        void suspend();
+        void reboot();
+        void shutdown();
+        void toggleFullScreen();
+        void cleanVideoLibrary();
+        void cleanAudioLibrary();
+        void updateVideoLibrary();
+        void updateAudioLibrary();
     }
 
     class RpcError extends RuntimeException {
@@ -139,7 +162,7 @@ public interface Remote {
     }
 
     enum Message {
-        GENERAL_ERROR,
+        GENERAL_ERROR, IS_QUITTING,
         CANNOT_SHARE_VIDEO, CANNOT_GET_ACTIVE_PLAYER, CANNOT_ENQUEUE_FILE, CANNOT_PLAY_FILE
     }
 

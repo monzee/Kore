@@ -2,7 +2,6 @@ package org.xbmc.nanisore.screens.remote;
 
 import org.xbmc.kore.Settings;
 import org.xbmc.kore.host.HostConnectionObserver;
-import org.xbmc.kore.host.HostManager;
 import org.xbmc.kore.jsonrpc.type.ListType;
 import org.xbmc.kore.jsonrpc.type.PlayerType;
 import org.xbmc.kore.jsonrpc.type.PlayerType.GetActivePlayersReturnType;
@@ -36,7 +35,21 @@ public class RemotePresenter implements Remote.Actions {
                 PlayerType.PropertyValue getPropertiesResult,
                 ListType.ItemsAll getItemResult
         ) {
-
+            if (view == null) {
+                return;
+            }
+            String img = getItemResult.fanart;
+            if (img == null || img.trim().isEmpty()) {
+                img = getItemResult.thumbnail;
+            }
+            if (img != null && !img.trim().isEmpty() && !img.equals(state.imageUrl)) {
+                view.setBackgroundImage(img);
+                state.imageUrl = img;
+            }
+            if (!state.isObservingPlayer) {
+                view.startObservingPlayerStatus();
+                state.isObservingPlayer = true;
+            }
         }
 
         @Override
@@ -45,37 +58,43 @@ public class RemotePresenter implements Remote.Actions {
                 PlayerType.PropertyValue getPropertiesResult,
                 ListType.ItemsAll getItemResult
         ) {
-
+            playerOnPlay(getActivePlayerResult, getPropertiesResult, getItemResult);
         }
 
         @Override
         public void playerOnStop() {
-
+            if (state.imageUrl != null && view != null) {
+                view.setBackgroundImage(null);
+                state.imageUrl = null;
+            }
         }
 
         @Override
         public void playerOnConnectionError(int errorCode, String description) {
-
+            playerOnStop();
         }
 
         @Override
         public void playerNoResultsYet() {
-
+            // noop
         }
 
         @Override
         public void systemOnQuit() {
-
+            report(Remote.Message.IS_QUITTING);
+            playerOnStop();
         }
 
         @Override
         public void inputOnInputRequested(String title, String type, String value) {
-
+            if (view != null) {
+                view.promptTextToSend(title);
+            }
         }
 
         @Override
         public void observerOnStopObserving() {
-
+            // noop
         }
     }
 
@@ -91,21 +110,19 @@ public class RemotePresenter implements Remote.Actions {
     private final Options options;
     private final Remote.UseCases will;
     private final Remote.Rpc rpc;
-    private final HostManager host;
     private final HostConnectionObserver hostEvents;
     private final HostConnectionObserver.PlayerEventsObserver onPlayerEvent = new OnPlayerEvent();
 
     public RemotePresenter(
-            HostManager host,
             Remote.UseCases will,
             Remote.Rpc rpc,
-            Options options
+            Options options,
+            HostConnectionObserver hostEvents
     ) {
-        this.host = host;
         this.will = will;
         this.rpc = rpc;
         this.options = options;
-        hostEvents = host.getHostConnectionObserver();
+        this.hostEvents = hostEvents;
     }
 
     @Override
@@ -113,21 +130,31 @@ public class RemotePresenter implements Remote.Actions {
         if (this.view != null) {
             throw new RuntimeException("Unbind first before rebinding!");
         }
-        if (host.getHostInfo() == null) {
-            view.goToHostAdder();
-            return;
-        }
-        this.view = view;
-        hostEvents.registerPlayerObserver(onPlayerEvent, true);
         will.restoreState(new Remote.OnRestore() {
             @Override
             public void restored(Remote.State state) {
+                if (!state.isHostPresent) {
+                    view.goToHostAdder();
+                    return;
+                }
+                RemotePresenter.this.view = view;
                 RemotePresenter.this.state = state;
+                hostEvents.registerPlayerObserver(onPlayerEvent, true);
                 view.initNavigationDrawer();
-                view.initTabs(state.activeTab);
+                view.initTabs(state.fresh);
                 view.initActionBar();
                 view.toggleKeepAboveLockScreen(isEnabled(Remote.Option.KEEP_ABOVE_LOCK_SCREEN));
                 view.toggleKeepScreenOn(isEnabled(Remote.Option.KEEP_SCREEN_ON));
+                if (state.videoToShare != null) {
+                    didShareVideo(state.videoToShare);
+                }
+                if (state.imageUrl != null) {
+                    view.setBackgroundImage(state.imageUrl);
+                }
+                if (state.isObservingPlayer) {
+                    view.startObservingPlayerStatus();
+                }
+                state.fresh = false;
             }
         });
     }
@@ -135,7 +162,7 @@ public class RemotePresenter implements Remote.Actions {
     @Override
     public void unbind() {
         view = null;
-        if (hostEvents != null) {
+        if (state != null) {
             hostEvents.unregisterPlayerObserver(onPlayerEvent);
             rpc.dispose();
             will.saveState(state);
@@ -144,12 +171,12 @@ public class RemotePresenter implements Remote.Actions {
 
     @Override
     public void didShareVideo(String uriString) {
-        Log.I.to(view, "attempting to share: %s", uriString);
         try {
             URL url = new URL(uriString);
-            String videoUri = tryParseYoutubeUrl(url);
-            videoUri = videoUri != null ? videoUri : tryParseVimeoUrl(url);
+            String videoUri = parseYouTubeId(url);
+            videoUri = videoUri != null ? videoUri : parseVimeoId(url);
             if (videoUri == null) {
+                Log.I.to(view, "can't recognize share: %s", uriString);
                 report(Remote.Message.CANNOT_SHARE_VIDEO);
             } else {
                 Log.I.to(view, "attempting to enqueue: %s", videoUri);
@@ -157,7 +184,19 @@ public class RemotePresenter implements Remote.Actions {
                 will.maybeClearPlaylist(new ReportError<>(new Remote.OnMaybeClearPlaylist() {
                     @Override
                     public void playlistMaybeCleared(boolean wasCleared) {
-                        will.enqueueFile(uriToAddon, wasCleared, new ReportError<>(null));
+                        will.enqueueFile(
+                                uriToAddon,
+                                wasCleared,
+                                new ReportError<>(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        state.videoToShare = null;
+                                        if (view != null) {
+                                            view.refreshPlaylist();
+                                        }
+                                    }
+                                })
+                        );
                     }
                 }));
             }
@@ -170,67 +209,66 @@ public class RemotePresenter implements Remote.Actions {
     @Override
     public void didPressVolumeUp() {
         if (useVolumeKeys.get()) {
-            will.fireAndForget(new Runnable() {
-                @Override
-                public void run() {
-                    rpc.increaseVolume();
-                }
-            });
+            rpc.increaseVolume();
         }
     }
 
     @Override
     public void didPressVolumeDown() {
         if (useVolumeKeys.get()) {
-            will.fireAndForget(new Runnable() {
-                @Override
-                public void run() {
-                    rpc.decreaseVolume();
-                }
-            });
+            rpc.decreaseVolume();
         }
     }
 
     @Override
     public void didChoose(final Remote.MenuAction action) {
-        will.fireAndForget(new Runnable() {
-            @Override
-            public void run() {
-                switch (action) {
-                    case WAKE_UP:
-                        break;
-                    case QUIT:
-                        break;
-                    case SUSPEND:
-                        break;
-                    case REBOOT:
-                        break;
-                    case SHUTDOWN:
-                        break;
-                    case SEND_TEXT:
-                        break;
-                    case FULLSCREEN:
-                        break;
-                    case CLEAN_VIDEO_LIBRARY:
-                        break;
-                    case CLEAN_AUDIO_LIBRARY:
-                        break;
-                    case UPDATE_VIDEO_LIBRARY:
-                        break;
-                    case UPDATE_AUDIO_LIBRARY:
-                        break;
+        switch (action) {
+            case WAKE_UP:
+                will.fireAndForget(new Runnable() {
+                    @Override
+                    public void run() {
+                        rpc.tryWakeUp();
+                    }
+                });
+                break;
+            case QUIT:
+                rpc.quit();
+                break;
+            case SUSPEND:
+                rpc.suspend();
+                break;
+            case REBOOT:
+                rpc.reboot();
+                break;
+            case SHUTDOWN:
+                rpc.shutdown();
+                break;
+            case SEND_TEXT:
+                if (view != null) {
+                    view.promptTextToSend();
                 }
-            }
-        });
+                break;
+            case FULLSCREEN:
+                rpc.toggleFullScreen();
+                break;
+            case CLEAN_VIDEO_LIBRARY:
+                rpc.cleanVideoLibrary();
+                break;
+            case CLEAN_AUDIO_LIBRARY:
+                rpc.cleanAudioLibrary();
+                break;
+            case UPDATE_VIDEO_LIBRARY:
+                rpc.updateVideoLibrary();
+                break;
+            case UPDATE_AUDIO_LIBRARY:
+                rpc.updateAudioLibrary();
+                break;
+        }
     }
 
     @Override
     public void didSendText(String text, boolean done) {
-    }
-
-    @Override
-    public void didSwitchTab(int position) {
-        state.activeTab = position;
+        rpc.sendText(text, done);
     }
 
     private void report(Remote.Message msg, Object... fmtArgs) {
@@ -274,22 +312,21 @@ public class RemotePresenter implements Remote.Actions {
         return options.get(key, def);
     }
 
-    private String tryParseVimeoUrl(URL url) {
+    private String parseVimeoId(URL url) {
         String host = url.getHost();
         if (host == null || !host.endsWith("vimeo.com")) {
             return null;
         }
-        return pluginUriFromPath(url, "vimeo");
+        return pluginUriFromPath(url.getPath(), "vimeo");
     }
 
-    private String tryParseYoutubeUrl(URL url) {
+    private String parseYouTubeId(URL url) {
         String host = url.getHost();
         if (host == null || !(host.endsWith("youtube.com") || host.endsWith("youtu.be"))) {
             return null;
         }
-        if (host.endsWith("youtu.be")) {
-            return pluginUriFromPath(url, "youtube");
-        } else {
+        String path = url.getPath();
+        if (host.endsWith("youtube.com")) {
             String query = url.getQuery();
             if (query == null) {
                 return null;
@@ -298,12 +335,12 @@ public class RemotePresenter implements Remote.Actions {
             if (!getVideoId.find()) {
                 return null;
             }
-            return "plugin://plugin.video.youtube/play/?video_id=" + getVideoId.group(1);
+            path = "/" + getVideoId.group(1);
         }
+        return pluginUriFromPath(path, "youtube");
     }
 
-    private String pluginUriFromPath(URL url, String pluginName) {
-        String path = url.getPath();
+    private String pluginUriFromPath(String path, String pluginName) {
         if (path == null || path.length() < 1) {
             return null;
         }

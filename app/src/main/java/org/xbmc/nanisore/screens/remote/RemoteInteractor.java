@@ -10,12 +10,39 @@ import org.xbmc.nanisore.utils.scheduling.Task;
 
 public class RemoteInteractor implements Remote.UseCases {
 
+    public static final class Builder {
+        private final Runner runner;
+        private final Remote.Rpc rpc;
+        private final Remote.State state = new Remote.State();
+
+        public Builder(Runner runner, Remote.Rpc rpc) {
+            this.runner = runner;
+            this.rpc = rpc;
+        }
+
+        public Builder withVideoToShare(String uri) {
+            state.videoToShare = uri;
+            return this;
+        }
+
+        public Builder withHostPresent(boolean present) {
+            state.isHostPresent = present;
+            return this;
+        }
+
+        public RemoteInteractor build() {
+            return new RemoteInteractor(runner, rpc, state);
+        }
+    }
+
     private final Runner runner;
     private final Remote.Rpc rpc;
+    private final Remote.State initState;
 
-    public RemoteInteractor(Runner runner, Remote.Rpc rpc) {
+    RemoteInteractor(Runner runner, Remote.Rpc rpc, Remote.State state) {
         this.runner = runner;
         this.rpc = rpc;
+        this.initState = state;
     }
 
     @Override
@@ -25,15 +52,7 @@ public class RemoteInteractor implements Remote.UseCases {
 
     @Override
     public void restoreState(final Remote.OnRestore then) {
-        runner.once(Task.unit("init", new Producer<Remote.State>() {
-            @Override
-            public Remote.State apply() {
-                Remote.State s = new Remote.State();
-                s.activeTab = 1;
-                s.sharedVideoEnqueued = false;
-                return s;
-            }
-        }), new Continuation<Remote.State>() {
+        runner.once(Task.just("init", initState), new Continuation<Remote.State>() {
             @Override
             public void accept(Remote.State result, Throwable error) {
                 then.restored(result);
@@ -48,12 +67,12 @@ public class RemoteInteractor implements Remote.UseCases {
         runner.schedule(Task.unit("playlist-cleared?", new Producer<Boolean>() {
             @Override
             public Boolean apply() throws InterruptedException {
-                for (PlayerType.GetActivePlayersReturnType player : rpc.getActivePlayers()) {
+                for (PlayerType.GetActivePlayersReturnType player : rpc.tryGetActivePlayers()) {
                     if (player.type.equals(PlayerType.GetActivePlayersReturnType.VIDEO)) {
                         return false;
                     }
                 }
-                rpc.clearVideoPlaylist();
+                rpc.tryClearVideoPlaylist();
                 return true;
             }
         }), new Continuation<Boolean>() {
@@ -72,23 +91,25 @@ public class RemoteInteractor implements Remote.UseCases {
     public void enqueueFile(
             final String videoUri,
             final boolean startPlaylist,
-            final MightFail<?> then
+            final MightFail<? extends Runnable> then
     ) {
         runner.schedule(Task.unit("enqueue-" + videoUri, new Producer<Void>() {
             @Override
             public Void apply() throws InterruptedException {
                 PlaylistType.Item item = new PlaylistType.Item();
                 item.file = videoUri;
-                rpc.addToVideoPlaylist(item);
+                rpc.tryAddToVideoPlaylist(item);
                 if (startPlaylist) {
-                    rpc.openVideoPlaylist();
+                    rpc.tryOpenVideoPlaylist();
                 }
                 return null;
             }
         }), new Continuation<Void>() {
             @Override
             public void accept(Void result, Throwable error) {
-                if (error != null) {
+                if (error == null) {
+                    then.ok.run();
+                } else {
                     then.fail(error);
                 }
             }

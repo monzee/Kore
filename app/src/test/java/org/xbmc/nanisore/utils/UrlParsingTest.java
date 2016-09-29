@@ -19,12 +19,6 @@ public class UrlParsingTest {
         assertThat(path, startsWith("/"));
     }
 
-    @Test
-    public void it_is_ok_to_split_an_empty_substring() {
-        String p = "/";
-        assertEquals(1, p.substring(1).split("/", 2).length);
-    }
-
     private final Pattern getQueryVar = Pattern.compile("(?:^|&)v=([^&]+)");
 
     private void matchUrl(String url) throws MalformedURLException {
