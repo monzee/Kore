@@ -1,6 +1,6 @@
 package org.xbmc.nanisore.screens.remote;
 
-import org.xbmc.kore.jsonrpc.type.PlayerType;
+import org.xbmc.kore.jsonrpc.type.PlayerType.GetActivePlayersReturnType;
 import org.xbmc.kore.jsonrpc.type.PlaylistType;
 import org.xbmc.nanisore.utils.MightFail;
 import org.xbmc.nanisore.utils.scheduling.Continuation;
@@ -36,12 +36,12 @@ public class RemoteInteractor implements Remote.UseCases {
     }
 
     private final Runner runner;
-    private final Remote.Rpc rpc;
+    private final Remote.Rpc kodi;
     private final Remote.State initState;
 
-    RemoteInteractor(Runner runner, Remote.Rpc rpc, Remote.State state) {
+    RemoteInteractor(Runner runner, Remote.Rpc kodi, Remote.State state) {
         this.runner = runner;
-        this.rpc = rpc;
+        this.kodi = kodi;
         this.initState = state;
     }
 
@@ -67,12 +67,12 @@ public class RemoteInteractor implements Remote.UseCases {
         runner.schedule(Task.unit("playlist-cleared?", new Producer<Boolean>() {
             @Override
             public Boolean apply() throws InterruptedException {
-                for (PlayerType.GetActivePlayersReturnType player : rpc.tryGetActivePlayers()) {
-                    if (player.type.equals(PlayerType.GetActivePlayersReturnType.VIDEO)) {
+                for (GetActivePlayersReturnType player : kodi.tryGetActivePlayers()) {
+                    if (player.type.equals(GetActivePlayersReturnType.VIDEO)) {
                         return false;
                     }
                 }
-                rpc.tryClearVideoPlaylist();
+                kodi.tryClearVideoPlaylist();
                 return true;
             }
         }), new Continuation<Boolean>() {
@@ -98,9 +98,9 @@ public class RemoteInteractor implements Remote.UseCases {
             public Void apply() throws InterruptedException {
                 PlaylistType.Item item = new PlaylistType.Item();
                 item.file = videoUri;
-                rpc.tryAddToVideoPlaylist(item);
+                kodi.tryAddToVideoPlaylist(item);
                 if (startPlaylist) {
-                    rpc.tryOpenVideoPlaylist();
+                    kodi.tryOpenVideoPlaylist();
                 }
                 return null;
             }

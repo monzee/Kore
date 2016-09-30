@@ -110,18 +110,18 @@ public class RemotePresenter implements Remote.Actions {
     private Remote.State state;
     private final Options options;
     private final Remote.UseCases will;
-    private final Remote.Rpc rpc;
+    private final Remote.Rpc kodi;
     private final HostConnectionObserver hostEvents;
     private final HostConnectionObserver.PlayerEventsObserver onPlayerEvent = new OnPlayerEvent();
 
     public RemotePresenter(
             Remote.UseCases will,
-            Remote.Rpc rpc,
+            Remote.Rpc kodi,
             Options options,
             HostConnectionObserver hostEvents
     ) {
         this.will = will;
-        this.rpc = rpc;
+        this.kodi = kodi;
         this.options = options;
         this.hostEvents = hostEvents;
     }
@@ -163,7 +163,7 @@ public class RemotePresenter implements Remote.Actions {
     @Override
     public void unbind() {
         view = null;
-        rpc.dispose();
+        kodi.dispose();
         if (state != null) {
             hostEvents.unregisterPlayerObserver(onPlayerEvent);
             will.save(state);
@@ -207,14 +207,14 @@ public class RemotePresenter implements Remote.Actions {
     @Override
     public void didPressVolumeUp() {
         if (useVolumeKeys.get()) {
-            rpc.increaseVolume();
+            kodi.increaseVolume();
         }
     }
 
     @Override
     public void didPressVolumeDown() {
         if (useVolumeKeys.get()) {
-            rpc.decreaseVolume();
+            kodi.decreaseVolume();
         }
     }
 
@@ -225,21 +225,21 @@ public class RemotePresenter implements Remote.Actions {
                 will.fireAndForget(new Runnable() {
                     @Override
                     public void run() {
-                        rpc.tryWakeUp();
+                        kodi.tryWakeUp();
                     }
                 });
                 break;
             case QUIT:
-                rpc.quit();
+                kodi.quit();
                 break;
             case SUSPEND:
-                rpc.suspend();
+                kodi.suspend();
                 break;
             case REBOOT:
-                rpc.reboot();
+                kodi.reboot();
                 break;
             case SHUTDOWN:
-                rpc.shutdown();
+                kodi.shutdown();
                 break;
             case SEND_TEXT:
                 if (view != null) {
@@ -247,26 +247,26 @@ public class RemotePresenter implements Remote.Actions {
                 }
                 break;
             case FULLSCREEN:
-                rpc.toggleFullScreen();
+                kodi.toggleFullScreen();
                 break;
             case CLEAN_VIDEO_LIBRARY:
-                rpc.cleanVideoLibrary();
+                kodi.cleanVideoLibrary();
                 break;
             case CLEAN_AUDIO_LIBRARY:
-                rpc.cleanAudioLibrary();
+                kodi.cleanAudioLibrary();
                 break;
             case UPDATE_VIDEO_LIBRARY:
-                rpc.updateVideoLibrary();
+                kodi.updateVideoLibrary();
                 break;
             case UPDATE_AUDIO_LIBRARY:
-                rpc.updateAudioLibrary();
+                kodi.updateAudioLibrary();
                 break;
         }
     }
 
     @Override
     public void didSendText(String text, boolean done) {
-        rpc.sendText(text, done);
+        kodi.sendText(text, done);
     }
 
     private void report(Remote.Message msg, Object... fmtArgs) {
