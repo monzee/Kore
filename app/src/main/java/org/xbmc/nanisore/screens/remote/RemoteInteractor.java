@@ -46,12 +46,12 @@ public class RemoteInteractor implements Remote.UseCases {
     }
 
     @Override
-    public void saveState(Remote.State state) {
+    public void save(Remote.State state) {
         runner.schedule(Task.just("init", state));
     }
 
     @Override
-    public void restoreState(final Remote.OnRestore then) {
+    public void restore(final OnRestore<Remote.State> then) {
         runner.once(Task.just("init", initState), new Continuation<Remote.State>() {
             @Override
             public void accept(Remote.State result, Throwable error) {

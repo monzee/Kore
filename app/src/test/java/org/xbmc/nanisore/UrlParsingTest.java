@@ -1,4 +1,4 @@
-package org.xbmc.nanisore.utils;
+package org.xbmc.nanisore;
 
 import org.junit.Test;
 

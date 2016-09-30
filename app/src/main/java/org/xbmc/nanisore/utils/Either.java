@@ -1,14 +1,14 @@
 package org.xbmc.nanisore.utils;
 
 public class Either<L extends Throwable, R> implements Try<R> {
-    private volatile boolean done;
+    private boolean done;
     private final Object lock = new Object();
     private L left;
     private R right;
 
     public void left(L value) {
-        if (!done) {
-            synchronized (lock) {
+        synchronized (lock) {
+            if (!done) {
                 left = value;
                 done = true;
                 lock.notifyAll();
@@ -17,8 +17,8 @@ public class Either<L extends Throwable, R> implements Try<R> {
     }
 
     public void right(R value) {
-        if (!done) {
-            synchronized (lock) {
+        synchronized (lock) {
+            if (!done) {
                 right = value;
                 done = true;
                 lock.notifyAll();

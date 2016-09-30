@@ -1,6 +1,7 @@
 package org.xbmc.nanisore.utils.scheduling;
 
 import org.xbmc.nanisore.utils.Either;
+import org.xbmc.nanisore.utils.Try;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,7 +18,7 @@ public abstract class BaseRunner implements Runner {
     };
 
     @Override
-    public <T> Canceller schedule(Producer<T> task, final Handler<T> handler) {
+    public <T> Canceller schedule(Producer<T> task, final Try.Handler<T> handler) {
         return schedule(task, toContinuation(handler));
     }
 
@@ -54,7 +55,7 @@ public abstract class BaseRunner implements Runner {
     }
 
     @Override
-    public <T> void once(Producer<T> task, final Handler<T> handler) {
+    public <T> void once(Producer<T> task, final Try.Handler<T> handler) {
         once(task, toContinuation(handler));
     }
 
@@ -63,7 +64,7 @@ public abstract class BaseRunner implements Runner {
         once(task, NOOP);
     }
 
-    private static <T> Continuation<T> toContinuation(final Handler<T> handler) {
+    private static <T> Continuation<T> toContinuation(final Try.Handler<T> handler) {
         return new Continuation<T>() {
             @Override
             public void accept(T result, Throwable error) {

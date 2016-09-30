@@ -2,6 +2,7 @@ package org.xbmc.nanisore.screens.remote;
 
 import org.xbmc.kore.jsonrpc.type.PlayerType;
 import org.xbmc.kore.jsonrpc.type.PlaylistType;
+import org.xbmc.nanisore.screens.Conventions;
 import org.xbmc.nanisore.utils.Console;
 import org.xbmc.nanisore.utils.MightFail;
 
@@ -33,30 +34,11 @@ public interface Remote {
         void didShareVideo(String uriString);
         void didPressVolumeUp();
         void didPressVolumeDown();
-        void didChoose(MenuAction action);
+        void didChoose(Menu action);
         void didSendText(String text, boolean done);
     }
 
-    interface UseCases {
-
-        /**
-         * Called during unbind().
-         *
-         * @param state This should be returned on the next call to
-         *              restoreState().
-         */
-        void saveState(State state);
-
-        /**
-         * Called during bind().
-         *
-         * Should set the initial state on first run. Otherwise, return the
-         * last state saved.
-         *
-         * @param then Will receive the saved or initial state. This can't
-         *             possibly fail.
-         */
-        void restoreState(OnRestore then);
+    interface UseCases extends Conventions<State> {
 
         /**
          * Called before enqueuing a shared video URL.
@@ -84,20 +66,6 @@ public interface Remote {
                 MightFail<? extends Runnable> then
         );
 
-        /**
-         * Run action in the background and return immediately.
-         *
-         * Don't care if it succeeds or fails. It will probably succeed.
-         *
-         * Meant for blocking actions. Async calls are already fire-and-forget
-         * if you don't attach a listener.
-         */
-        void fireAndForget(Runnable action);
-
-    }
-
-    interface OnRestore {
-        void restored(State state);
     }
 
     interface OnMaybeClearPlaylist {
@@ -156,7 +124,7 @@ public interface Remote {
 
     enum Option { KEEP_ABOVE_LOCK_SCREEN, KEEP_SCREEN_ON, USE_HARDWARE_VOLUME_KEYS }
 
-    enum MenuAction {
+    enum Menu {
         WAKE_UP, QUIT, SUSPEND, REBOOT, SHUTDOWN, SEND_TEXT, FULLSCREEN,
         CLEAN_VIDEO_LIBRARY, CLEAN_AUDIO_LIBRARY, UPDATE_VIDEO_LIBRARY, UPDATE_AUDIO_LIBRARY
     }

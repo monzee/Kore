@@ -5,6 +5,7 @@ import org.xbmc.kore.host.HostConnectionObserver;
 import org.xbmc.kore.jsonrpc.type.ListType;
 import org.xbmc.kore.jsonrpc.type.PlayerType;
 import org.xbmc.kore.jsonrpc.type.PlayerType.GetActivePlayersReturnType;
+import org.xbmc.nanisore.screens.Conventions;
 import org.xbmc.nanisore.utils.Lazy;
 import org.xbmc.nanisore.utils.Log;
 import org.xbmc.nanisore.utils.MightFail;
@@ -130,7 +131,7 @@ public class RemotePresenter implements Remote.Actions {
         if (this.view != null) {
             throw new RuntimeException("Unbind first before rebinding!");
         }
-        will.restoreState(new Remote.OnRestore() {
+        will.restore(new Conventions.OnRestore<Remote.State>() {
             @Override
             public void restored(Remote.State state) {
                 if (!state.isHostPresent) {
@@ -162,10 +163,10 @@ public class RemotePresenter implements Remote.Actions {
     @Override
     public void unbind() {
         view = null;
+        rpc.dispose();
         if (state != null) {
             hostEvents.unregisterPlayerObserver(onPlayerEvent);
-            rpc.dispose();
-            will.saveState(state);
+            will.save(state);
         }
     }
 
@@ -184,19 +185,16 @@ public class RemotePresenter implements Remote.Actions {
                 will.maybeClearPlaylist(new ReportError<>(new Remote.OnMaybeClearPlaylist() {
                     @Override
                     public void playlistMaybeCleared(boolean wasCleared) {
-                        will.enqueueFile(
-                                uriToAddon,
-                                wasCleared,
-                                new ReportError<>(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        state.videoToShare = null;
-                                        if (view != null) {
-                                            view.refreshPlaylist();
-                                        }
-                                    }
-                                })
-                        );
+                        Runnable fileEnqueued = new Runnable() {
+                            @Override
+                            public void run() {
+                                state.videoToShare = null;
+                                if (view != null) {
+                                    view.refreshPlaylist();
+                                }
+                            }
+                        };
+                        will.enqueueFile(uriToAddon, wasCleared, new ReportError<>(fileEnqueued));
                     }
                 }));
             }
@@ -221,7 +219,7 @@ public class RemotePresenter implements Remote.Actions {
     }
 
     @Override
-    public void didChoose(final Remote.MenuAction action) {
+    public void didChoose(final Remote.Menu action) {
         switch (action) {
             case WAKE_UP:
                 will.fireAndForget(new Runnable() {

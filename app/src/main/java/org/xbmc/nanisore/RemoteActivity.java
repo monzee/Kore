@@ -8,10 +8,7 @@ import android.support.v4.text.TextDirectionHeuristicsCompat;
 import android.text.TextUtils;
 import android.util.SparseArray;
 import android.view.KeyEvent;
-import android.view.Menu;
 import android.view.MenuItem;
-
-import com.squareup.picasso.Picasso;
 
 import org.xbmc.kore.R;
 import org.xbmc.kore.host.HostInfo;
@@ -23,7 +20,6 @@ import org.xbmc.nanisore.screens.AndroidOptions;
 import org.xbmc.nanisore.screens.remote.AndroidRemoteHostProxy;
 import org.xbmc.nanisore.screens.remote.AndroidRemoteView;
 import org.xbmc.nanisore.screens.remote.Remote;
-import org.xbmc.nanisore.screens.remote.Remote.MenuAction;
 import org.xbmc.nanisore.screens.remote.RemoteInteractor;
 import org.xbmc.nanisore.screens.remote.RemotePresenter;
 import org.xbmc.nanisore.utils.Lazy;
@@ -33,21 +29,21 @@ public class RemoteActivity extends BaseActivity
         implements SendTextDialogListener, NowPlayingListener
 {
     private static final
-    Lazy<SparseArray<MenuAction>> menuActions = new Lazy<SparseArray<MenuAction>>() {
+    Lazy<SparseArray<Remote.Menu>> menuActions = new Lazy<SparseArray<Remote.Menu>>() {
         @Override
-        protected SparseArray<MenuAction> value() {
-            SparseArray<MenuAction> map = new SparseArray<>();
-            map.append(R.id.action_wake_up, MenuAction.WAKE_UP);
-            map.append(R.id.action_quit, MenuAction.QUIT);
-            map.append(R.id.action_suspend, MenuAction.SUSPEND);
-            map.append(R.id.action_reboot, MenuAction.REBOOT);
-            map.append(R.id.action_shutdown, MenuAction.SHUTDOWN);
-            map.append(R.id.send_text, MenuAction.SEND_TEXT);
-            map.append(R.id.toggle_fullscreen, MenuAction.FULLSCREEN);
-            map.append(R.id.clean_video_library, MenuAction.CLEAN_VIDEO_LIBRARY);
-            map.append(R.id.clean_audio_library, MenuAction.CLEAN_AUDIO_LIBRARY);
-            map.append(R.id.update_video_library, MenuAction.UPDATE_VIDEO_LIBRARY);
-            map.append(R.id.update_audio_library, MenuAction.UPDATE_AUDIO_LIBRARY);
+        protected SparseArray<Remote.Menu> value() {
+            SparseArray<Remote.Menu> map = new SparseArray<>();
+            map.append(R.id.action_wake_up, Remote.Menu.WAKE_UP);
+            map.append(R.id.action_quit, Remote.Menu.QUIT);
+            map.append(R.id.action_suspend, Remote.Menu.SUSPEND);
+            map.append(R.id.action_reboot, Remote.Menu.REBOOT);
+            map.append(R.id.action_shutdown, Remote.Menu.SHUTDOWN);
+            map.append(R.id.send_text, Remote.Menu.SEND_TEXT);
+            map.append(R.id.toggle_fullscreen, Remote.Menu.FULLSCREEN);
+            map.append(R.id.clean_video_library, Remote.Menu.CLEAN_VIDEO_LIBRARY);
+            map.append(R.id.clean_audio_library, Remote.Menu.CLEAN_AUDIO_LIBRARY);
+            map.append(R.id.update_video_library, Remote.Menu.UPDATE_VIDEO_LIBRARY);
+            map.append(R.id.update_audio_library, Remote.Menu.UPDATE_AUDIO_LIBRARY);
             return map;
         }
     };
@@ -75,7 +71,7 @@ public class RemoteActivity extends BaseActivity
                 new AndroidOptions(PreferenceManager.getDefaultSharedPreferences(context)),
                 hostManager.getHostConnectionObserver()
         );
-        view = new AndroidRemoteView(this, Picasso.with(context));
+        view = new AndroidRemoteView(this, hostManager.getPicasso());
     }
 
     @Override
@@ -91,7 +87,7 @@ public class RemoteActivity extends BaseActivity
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
+    public boolean onCreateOptionsMenu(android.view.Menu menu) {
         if (view.shouldInflateMenu()) {
             getMenuInflater().inflate(R.menu.remote, menu);
             return true;
@@ -101,13 +97,12 @@ public class RemoteActivity extends BaseActivity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        MenuAction action = menuActions.get().get(item.getItemId());
+        Remote.Menu action = menuActions.get().get(item.getItemId());
         if (action != null) {
             user.didChoose(action);
             return true;
-        } else {
-            return super.onOptionsItemSelected(item);
         }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
