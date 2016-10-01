@@ -33,13 +33,13 @@ import java.util.List;
  * TODO: if i use a dedicated HandlerThread, it won't be a problem
  * but i'd need to clean it up later and check for validity for every call
  */
-public class AndroidRemoteHostProxy implements Remote.Rpc {
+public class AndroidRemoteKodiProxy implements Remote.Rpc {
 
     private final HostConnection host;
     private final HostInfo hostInfo;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-    public AndroidRemoteHostProxy(HostConnection host, HostInfo hostInfo) {
+    public AndroidRemoteKodiProxy(HostConnection host, HostInfo hostInfo) {
         this.host = host;
         this.hostInfo = hostInfo;
     }

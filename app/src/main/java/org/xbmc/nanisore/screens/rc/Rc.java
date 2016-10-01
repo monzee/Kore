@@ -20,7 +20,7 @@ public interface Rc {
         void mumble(String message, Object... fmtArgs);
         void show(
                 String title,
-                String subtitle,
+                String details,
                 String thumbnail,
                 boolean showSkipIcons
         );
@@ -30,12 +30,15 @@ public interface Rc {
         void bind(Ui view);
         void unbind();
         void didPress(Button button);
+        void didLongPress(Button button);
+        void didStartHoldingDown(Button button);
+        void didStopHoldingDown(Button button);
     }
 
     interface UseCases extends Conventions<State> {
         void connectToEventServer(MightFail<?> then);
         void changeSpeed(boolean faster, OnSpeedChange then);
-        void fireAndLog(Runnable action);
+        void fireAndLogTo(Console console, Runnable action);
     }
 
     class State {
@@ -48,8 +51,10 @@ public interface Rc {
     }
 
     /**
-     * Everything is sync because the default listener in the current impl
-     * logs all errors.
+     * Everything is sync because the default listener in the reference impl
+     * logs all errors. Unfortunate because I can't optimize them by handle
+     * logging in a single listener because the proxy shouldn't know about
+     * the view.
      */
     interface Rpc {
         void tryLeft(boolean viaPacket);
@@ -61,6 +66,7 @@ public interface Rc {
         void tryInfo();
         void tryCodecInfo();
         void tryContextMenu();
+        void tryOsd();
         void tryHome();
         void tryMovies();
         void tryShows();
@@ -75,7 +81,7 @@ public interface Rc {
     }
 
     enum Button {
-        LEFT, RIGHT, UP, DOWN, SELECT, BACK, INFO, CONTEXT,
+        LEFT, RIGHT, UP, DOWN, SELECT, BACK, INFO, CONTEXT, OSD,
         HOME, MOVIES, SHOWS, MUSIC, PICTURES,
         FORWARD, REWIND, PLAY, STOP
     }

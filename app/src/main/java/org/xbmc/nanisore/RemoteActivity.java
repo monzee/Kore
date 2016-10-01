@@ -17,7 +17,7 @@ import org.xbmc.kore.ui.BaseActivity;
 import org.xbmc.kore.ui.NowPlayingFragment.NowPlayingListener;
 import org.xbmc.kore.ui.SendTextDialogFragment.SendTextDialogListener;
 import org.xbmc.nanisore.screens.AndroidOptions;
-import org.xbmc.nanisore.screens.remote.AndroidRemoteHostProxy;
+import org.xbmc.nanisore.screens.remote.AndroidRemoteKodiProxy;
 import org.xbmc.nanisore.screens.remote.AndroidRemoteView;
 import org.xbmc.nanisore.screens.remote.Remote;
 import org.xbmc.nanisore.screens.remote.RemoteInteractor;
@@ -29,7 +29,7 @@ public class RemoteActivity extends BaseActivity
         implements SendTextDialogListener, NowPlayingListener
 {
     private static final
-    Lazy<SparseArray<Remote.Menu>> menuActions = new Lazy<SparseArray<Remote.Menu>>() {
+    Lazy<SparseArray<Remote.Menu>> ACTIONS = new Lazy<SparseArray<Remote.Menu>>() {
         @Override
         protected SparseArray<Remote.Menu> value() {
             SparseArray<Remote.Menu> map = new SparseArray<>();
@@ -58,7 +58,7 @@ public class RemoteActivity extends BaseActivity
         Context context = getApplicationContext();
         HostManager hostManager = HostManager.getInstance(context);
         HostInfo hostInfo = hostManager.getHostInfo();
-        AndroidRemoteHostProxy rpc = new AndroidRemoteHostProxy(
+        AndroidRemoteKodiProxy rpc = new AndroidRemoteKodiProxy(
                 hostManager.getConnection(),
                 hostInfo
         );
@@ -75,8 +75,8 @@ public class RemoteActivity extends BaseActivity
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
+    protected void onStart() {
+        super.onStart();
         user.bind(view);
     }
 
@@ -97,7 +97,7 @@ public class RemoteActivity extends BaseActivity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        Remote.Menu action = menuActions.get().get(item.getItemId());
+        Remote.Menu action = ACTIONS.get().get(item.getItemId());
         if (action != null) {
             user.didChoose(action);
             return true;

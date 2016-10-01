@@ -18,7 +18,6 @@ import org.xbmc.kore.utils.UIUtils;
 import org.xbmc.nanisore.screens.AndroidLogger;
 import org.xbmc.nanisore.utils.Lazy;
 
-import butterknife.ButterKnife;
 import butterknife.InjectView;
 
 public class AndroidRcView extends AndroidLogger implements Rc.Ui {
@@ -59,10 +58,10 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     private final Context context;
     private final Picasso picasso;
 
-    @InjectView(R.id.info_panel) RelativeLayout panelInfo;
-    @InjectView(R.id.media_panel) RelativeLayout panelMedia;
-    @InjectView(R.id.remote) RelativeLayout panelRemote;
-    @InjectView(R.id.button_bar) LinearLayout panelButtonBar;
+    @InjectView(R.id.info_panel) RelativeLayout boxInfo;
+    @InjectView(R.id.media_panel) RelativeLayout boxMedia;
+    @InjectView(R.id.remote) RelativeLayout boxRemote;
+    @InjectView(R.id.button_bar) LinearLayout boxButtonBar;
 
     @InjectView(R.id.info_title) TextView theInfoHead;
     @InjectView(R.id.info_message) TextView theInfoBody;
@@ -75,12 +74,7 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     @InjectView(R.id.rewind) ImageButton doRewind;
     @InjectView(R.id.fast_forward) ImageButton doFastForward;
 
-    public AndroidRcView(View rootView, Picasso picasso) {
-        this(rootView.getContext(), picasso);
-        ButterKnife.inject(this, rootView);
-    }
-
-    private AndroidRcView(final Context context, Picasso picasso) {
+    public AndroidRcView(Context context, Picasso picasso) {
         super(context, TAG);
         this.context = context;
         this.picasso = picasso;
@@ -94,22 +88,22 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     @Override
     public void toggleMediaInfoPanel(boolean showMedia) {
         if (showMedia) {
-            panelInfo.setVisibility(View.GONE);
-            panelMedia.setVisibility(View.VISIBLE);
+            boxInfo.setVisibility(View.GONE);
+            boxMedia.setVisibility(View.VISIBLE);
         } else {
-            panelInfo.setVisibility(View.VISIBLE);
-            panelMedia.setVisibility(View.GONE);
+            boxInfo.setVisibility(View.VISIBLE);
+            boxMedia.setVisibility(View.GONE);
         }
     }
 
     @Override
     public void toggleRemotePanel(boolean visible) {
         if (visible) {
-            panelRemote.setVisibility(View.VISIBLE);
-            panelButtonBar.setVisibility(View.VISIBLE);
+            boxRemote.setVisibility(View.VISIBLE);
+            boxButtonBar.setVisibility(View.VISIBLE);
         } else {
-            panelRemote.setVisibility(View.GONE);
-            panelButtonBar.setVisibility(View.GONE);
+            boxRemote.setVisibility(View.GONE);
+            boxButtonBar.setVisibility(View.GONE);
         }
     }
 
@@ -126,14 +120,16 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     @Override
     public void show(
             String title,
-            String subtitle,
+            String details,
             String thumbnail,
             boolean showSkipIcons
     ) {
         theTitle.setText(title);
-        theDetails.setText(subtitle);
-        doRewind.setImageResource(icons.get()[showSkipIcons ? PREV : REWIND]);
-        doFastForward.setImageResource(icons.get()[showSkipIcons ? NEXT : FORWARD]);
+        theDetails.setText(details);
+
+        Integer[] iconFor = icons.get();
+        doRewind.setImageResource(iconFor[showSkipIcons ? PREV : REWIND]);
+        doFastForward.setImageResource(iconFor[showSkipIcons ? NEXT : FORWARD]);
 
         CharacterDrawable avatar = UIUtils.getCharacterAvatar(context, title);
         int width = theThumbnail.getWidth();
@@ -151,4 +147,5 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
             picasso.load(thumbnail).fit().centerCrop().into(theThumbnail);
         }
     }
+
 }

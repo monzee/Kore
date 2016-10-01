@@ -19,11 +19,11 @@ import org.xbmc.kore.service.ConnectionObserversManagerService;
 import org.xbmc.kore.ui.NavigationDrawerFragment;
 import org.xbmc.kore.ui.NowPlayingFragment;
 import org.xbmc.kore.ui.PlaylistFragment;
-import org.xbmc.kore.ui.RemoteFragment;
 import org.xbmc.kore.ui.SendTextDialogFragment;
 import org.xbmc.kore.ui.hosts.AddHostActivity;
 import org.xbmc.kore.ui.views.CirclePageIndicator;
 import org.xbmc.kore.utils.TabsAdapter;
+import org.xbmc.nanisore.RcFragment;
 import org.xbmc.nanisore.screens.AndroidLogger;
 import org.xbmc.nanisore.utils.Lazy;
 
@@ -58,20 +58,11 @@ public class AndroidRemoteView extends AndroidLogger
     private NavigationDrawerFragment navigationDrawerFragment;
     private boolean hasBackgroundImage;
 
-    @InjectView(R.id.background_image)
-    ImageView backgroundImage;
-
-    @InjectView(R.id.pager_indicator)
-    CirclePageIndicator pageIndicator;
-
-    @InjectView(R.id.pager)
-    ViewPager viewPager;
-
-    @InjectView(R.id.default_toolbar)
-    Toolbar toolbar;
-
-    @InjectView(R.id.drawer_layout)
-    DrawerLayout drawerLayout;
+    @InjectView(R.id.background_image) ImageView backgroundImage;
+    @InjectView(R.id.pager_indicator) CirclePageIndicator pageIndicator;
+    @InjectView(R.id.pager) ViewPager viewPager;
+    @InjectView(R.id.default_toolbar) Toolbar toolbar;
+    @InjectView(R.id.drawer_layout) DrawerLayout drawerLayout;
 
     public AndroidRemoteView(
             AppCompatActivity activity,
@@ -134,7 +125,7 @@ public class AndroidRemoteView extends AndroidLogger
     public void initTabs(boolean fresh) {
         TabsAdapter tabsAdapter = new TabsAdapter(activity, fragments)
                 .addTab(NowPlayingFragment.class, null, R.string.now_playing, FRAGMENT_NOW_PLAYING)
-                .addTab(RemoteFragment.class, null, R.string.remote, FRAGMENT_REMOTE)
+                .addTab(RcFragment.class, null, R.string.remote, FRAGMENT_REMOTE)
                 .addTab(PlaylistFragment.class, null, R.string.playlist, FRAGMENT_PLAYLIST);
         viewPager.setAdapter(tabsAdapter);
         pageIndicator.setViewPager(viewPager);
