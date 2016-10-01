@@ -16,6 +16,8 @@ public interface Rc {
         void togglePlayPauseIcon(boolean showPlay);
         void toggleMediaInfoPanel(boolean showMedia);
         void toggleRemotePanel(boolean visible);
+        void animateIn(Button button);
+        void animateOut(Button button);
         void say(String message, Object... fmtArgs);
         void mumble(String message, Object... fmtArgs);
         void show(
@@ -81,7 +83,8 @@ public interface Rc {
     }
 
     enum Button {
-        LEFT, RIGHT, UP, DOWN, SELECT, BACK, INFO, CONTEXT, OSD,
+        LEFT, RIGHT, UP, DOWN,
+        SELECT, BACK, INFO, CONTEXT, OSD,
         HOME, MOVIES, SHOWS, MUSIC, PICTURES,
         FORWARD, REWIND, PLAY, STOP
     }

@@ -52,12 +52,7 @@ public class ForeverRunnerTest {
     public void cancel_works() throws InterruptedException {
         Runner r = new ForeverRunner(new BlockingRunner(), EXEC, 16);
         final AtomicInteger count = new AtomicInteger(0);
-        r.once(new Producer<Void>() {
-            @Override
-            public Void apply() throws Throwable {
-                return null;
-            }
-        }, new Continuation<Void>() {
+        r.once(Task.<Void>just(null), new Continuation<Void>() {
             @Override
             public void accept(Void result, Throwable error) {
                 count.getAndIncrement();

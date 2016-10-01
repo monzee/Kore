@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.IdRes;
 import android.support.v4.text.TextDirectionHeuristicsCompat;
 import android.text.TextUtils;
 import android.util.SparseArray;
@@ -28,26 +29,6 @@ import org.xbmc.nanisore.utils.scheduling.AndroidLoaderRunner;
 public class RemoteActivity extends BaseActivity
         implements SendTextDialogListener, NowPlayingListener
 {
-    private static final
-    Lazy<SparseArray<Remote.Menu>> ACTIONS = new Lazy<SparseArray<Remote.Menu>>() {
-        @Override
-        protected SparseArray<Remote.Menu> value() {
-            SparseArray<Remote.Menu> map = new SparseArray<>();
-            map.append(R.id.action_wake_up, Remote.Menu.WAKE_UP);
-            map.append(R.id.action_quit, Remote.Menu.QUIT);
-            map.append(R.id.action_suspend, Remote.Menu.SUSPEND);
-            map.append(R.id.action_reboot, Remote.Menu.REBOOT);
-            map.append(R.id.action_shutdown, Remote.Menu.SHUTDOWN);
-            map.append(R.id.send_text, Remote.Menu.SEND_TEXT);
-            map.append(R.id.toggle_fullscreen, Remote.Menu.FULLSCREEN);
-            map.append(R.id.clean_video_library, Remote.Menu.CLEAN_VIDEO_LIBRARY);
-            map.append(R.id.clean_audio_library, Remote.Menu.CLEAN_AUDIO_LIBRARY);
-            map.append(R.id.update_video_library, Remote.Menu.UPDATE_VIDEO_LIBRARY);
-            map.append(R.id.update_audio_library, Remote.Menu.UPDATE_AUDIO_LIBRARY);
-            return map;
-        }
-    };
-
     private Remote.Actions user;
     private Remote.Ui view;
 
@@ -97,7 +78,7 @@ public class RemoteActivity extends BaseActivity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        Remote.Menu action = ACTIONS.get().get(item.getItemId());
+        Remote.Menu action = actionOf(item.getItemId());
         if (action != null) {
             user.didChoose(action);
             return true;
@@ -173,6 +154,23 @@ public class RemoteActivity extends BaseActivity
             }
         }
         return null;
+    }
+
+    private static Remote.Menu actionOf(@IdRes int id) {
+        switch (id) {
+            case R.id.action_wake_up: return Remote.Menu.WAKE_UP;
+            case R.id.action_quit: return Remote.Menu.QUIT;
+            case R.id.action_suspend: return Remote.Menu.SUSPEND;
+            case R.id.action_reboot: return Remote.Menu.REBOOT;
+            case R.id.action_shutdown: return Remote.Menu.SHUTDOWN;
+            case R.id.send_text: return Remote.Menu.SEND_TEXT;
+            case R.id.toggle_fullscreen: return Remote.Menu.FULLSCREEN;
+            case R.id.clean_video_library: return Remote.Menu.CLEAN_VIDEO_LIBRARY;
+            case R.id.clean_audio_library: return Remote.Menu.CLEAN_AUDIO_LIBRARY;
+            case R.id.update_video_library: return Remote.Menu.UPDATE_VIDEO_LIBRARY;
+            case R.id.update_audio_library: return Remote.Menu.UPDATE_AUDIO_LIBRARY;
+            default: return null;
+        }
     }
 
 }

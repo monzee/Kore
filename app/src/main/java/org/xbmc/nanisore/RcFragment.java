@@ -2,6 +2,7 @@ package org.xbmc.nanisore;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.support.annotation.IdRes;
 import android.support.v4.app.Fragment;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
@@ -9,8 +10,6 @@ import android.view.MotionEvent;
 import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 
 import org.xbmc.kore.R;
 import org.xbmc.kore.host.HostManager;
@@ -27,49 +26,6 @@ import butterknife.OnTouch;
 
 public class RcFragment extends Fragment {
 
-    private static final
-    Lazy<SparseArray<Rc.Button>> BUTTONS = new Lazy<SparseArray<Rc.Button>>() {
-        @Override
-        protected SparseArray<Rc.Button> value() {
-            SparseArray<Rc.Button> map = new SparseArray<>();
-            map.append(R.id.home, Rc.Button.HOME);
-            map.append(R.id.movies, Rc.Button.MOVIES);
-            map.append(R.id.tv_shows, Rc.Button.SHOWS);
-            map.append(R.id.music, Rc.Button.MUSIC);
-            map.append(R.id.pictures, Rc.Button.PICTURES);
-            map.append(R.id.fast_forward, Rc.Button.FORWARD);
-            map.append(R.id.rewind, Rc.Button.REWIND);
-            map.append(R.id.play, Rc.Button.PLAY);
-            map.append(R.id.stop, Rc.Button.STOP);
-            map.append(R.id.select, Rc.Button.SELECT);
-            map.append(R.id.back, Rc.Button.BACK);
-            map.append(R.id.info, Rc.Button.INFO);
-            map.append(R.id.osd, Rc.Button.OSD);
-            map.append(R.id.context, Rc.Button.CONTEXT);
-            map.append(R.id.up, Rc.Button.UP);
-            map.append(R.id.down, Rc.Button.DOWN);
-            map.append(R.id.left, Rc.Button.LEFT);
-            map.append(R.id.right, Rc.Button.RIGHT);
-            return map;
-        }
-    };
-
-    private static final int BUTTON_IN = 0;
-    private static final int BUTTON_OUT = 1;
-
-    private final Lazy<Animation[]> animations = new Lazy<Animation[]>() {
-        @Override
-        protected Animation[] value() {
-            Context context = getContext();
-            Animation[] xs = new Animation[] {
-                    AnimationUtils.loadAnimation(context, R.anim.button_in),
-                    AnimationUtils.loadAnimation(context, R.anim.button_out)
-            };
-            xs[0].setFillAfter(true);
-            return xs;
-        }
-    };
-
     private Rc.Actions user;
     private Rc.Ui view;
 
@@ -82,23 +38,24 @@ public class RcFragment extends Fragment {
             Bundle savedInstanceState
     ) {
         View rootView = inflater.inflate(R.layout.fragment_remote, container, false);
+        Context context = getContext();
+        HostManager hostManager = HostManager.getInstance(context);
+        user = new RcPresenter();
+        view = new AndroidRcView(context, hostManager.getPicasso());
         ButterKnife.inject(view, rootView);
         ButterKnife.inject(this, rootView);
-        user.bind(view);
         return rootView;
     }
 
     @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        HostManager hostManager = HostManager.getInstance(context);
-        view = new AndroidRcView(context, hostManager.getPicasso());
-        user = new RcPresenter();
+    public void onStart() {
+        super.onStart();
+        user.bind(view);
     }
 
     @Override
-    public void onDetach() {
-        super.onDetach();
+    public void onDestroyView() {
+        super.onDestroyView();
         user.unbind();
         view = null;
         ButterKnife.reset(this);
@@ -108,35 +65,14 @@ public class RcFragment extends Fragment {
     boolean touch(View view, MotionEvent event) {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                view.startAnimation(animations.get()[BUTTON_IN]);
+                this.view.animateIn(buttonOf(view.getId()));
                 break;
             case MotionEvent.ACTION_UP:  // fallthrough
             case MotionEvent.ACTION_CANCEL:
-                view.startAnimation(animations.get()[BUTTON_OUT]);
+                this.view.animateOut(buttonOf(view.getId()));
                 break;
         }
         return false;
-    }
-
-    @OnTouch({R.id.up, R.id.down, R.id.left, R.id.right})
-    boolean longTouch(View view, MotionEvent event) {
-        Rc.Button button = BUTTONS.get().get(view.getId());
-        Animation[] animate = animations.get();
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                UIUtils.handleVibration(getContext());
-                user.didStartHoldingDown(button);
-                view.startAnimation(animate[BUTTON_IN]);
-                break;
-            case MotionEvent.ACTION_UP:
-                view.playSoundEffect(SoundEffectConstants.CLICK);
-                // fallthrough
-            case MotionEvent.ACTION_CANCEL:
-                user.didStopHoldingDown(button);
-                view.startAnimation(animate[BUTTON_OUT]);
-                break;
-        }
-        return true;
     }
 
     @OnClick({R.id.select, R.id.back, R.id.info, R.id.osd, R.id.context})
@@ -149,7 +85,7 @@ public class RcFragment extends Fragment {
             R.id.home, R.id.movies, R.id.tv_shows, R.id.music, R.id.pictures,
             R.id.fast_forward, R.id.rewind, R.id.play, R.id.stop,
     }) void click(View view) {
-        user.didPress(BUTTONS.get().get(view.getId()));
+        user.didPress(buttonOf(view.getId()));
     }
 
     @OnLongClick(R.id.info)
@@ -157,6 +93,47 @@ public class RcFragment extends Fragment {
         UIUtils.handleVibration(getContext());
         user.didLongPress(Rc.Button.INFO);
         return true;
+    }
+
+    @OnTouch({R.id.up, R.id.down, R.id.left, R.id.right})
+    boolean longTouch(View view, MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                UIUtils.handleVibration(getContext());
+                user.didStartHoldingDown(buttonOf(view.getId()));
+                break;
+            case MotionEvent.ACTION_UP:
+                view.playSoundEffect(SoundEffectConstants.CLICK);
+                // fallthrough
+            case MotionEvent.ACTION_CANCEL:
+                user.didStopHoldingDown(buttonOf(view.getId()));
+                break;
+        }
+        return true;
+    }
+
+    private static Rc.Button buttonOf(@IdRes int id) {
+        switch (id) {
+            case R.id.home: return Rc.Button.HOME;
+            case R.id.movies: return Rc.Button.MOVIES;
+            case R.id.tv_shows: return Rc.Button.SHOWS;
+            case R.id.music: return Rc.Button.MUSIC;
+            case R.id.pictures: return Rc.Button.PICTURES;
+            case R.id.fast_forward: return Rc.Button.FORWARD;
+            case R.id.rewind: return Rc.Button.REWIND;
+            case R.id.play: return Rc.Button.PLAY;
+            case R.id.stop: return Rc.Button.STOP;
+            case R.id.select: return Rc.Button.SELECT;
+            case R.id.back: return Rc.Button.BACK;
+            case R.id.info: return Rc.Button.INFO;
+            case R.id.osd: return Rc.Button.OSD;
+            case R.id.context: return Rc.Button.CONTEXT;
+            case R.id.up: return Rc.Button.UP;
+            case R.id.down: return Rc.Button.DOWN;
+            case R.id.left: return Rc.Button.LEFT;
+            case R.id.right: return Rc.Button.RIGHT;
+            default: return null;
+        }
     }
 
 }

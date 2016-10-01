@@ -32,9 +32,11 @@ public class ForeverRunner extends BaseRunner {
                         if (!cancelled) {
                             Thread.sleep(millis);
                         }
-                        if (!cancelled) {
-                            lastCanceller.cancel();
-                            lastCanceller = delegate.schedule(task, handler);
+                        synchronized (this) {
+                            if (!cancelled) {
+                                lastCanceller.cancel();
+                                lastCanceller = delegate.schedule(task, handler);
+                            }
                         }
                     } catch (InterruptedException e) {
                         e.printStackTrace();

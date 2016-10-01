@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -19,6 +21,7 @@ import org.xbmc.nanisore.screens.AndroidLogger;
 import org.xbmc.nanisore.utils.Lazy;
 
 import butterknife.InjectView;
+import butterknife.InjectViews;
 
 public class AndroidRcView extends AndroidLogger implements Rc.Ui {
 
@@ -30,6 +33,9 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     private static final int PREV = 3;
     private static final int PLAY = 4;
     private static final int PAUSE = 5;
+
+    private static final int BUTTON_IN = 0;
+    private static final int BUTTON_OUT = 1;
 
     private final Lazy<Integer[]> icons = new Lazy<Integer[]>() {
         @Override
@@ -55,6 +61,18 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
         }
     };
 
+    private final Lazy<Animation[]> animations = new Lazy<Animation[]>() {
+        @Override
+        protected Animation[] value() {
+            Animation[] xs = new Animation[] {
+                    AnimationUtils.loadAnimation(context, R.anim.button_in),
+                    AnimationUtils.loadAnimation(context, R.anim.button_out)
+            };
+            xs[0].setFillAfter(true);
+            return xs;
+        }
+    };
+
     private final Context context;
     private final Picasso picasso;
 
@@ -73,6 +91,11 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     @InjectView(R.id.play) ImageButton doPlay;
     @InjectView(R.id.rewind) ImageButton doRewind;
     @InjectView(R.id.fast_forward) ImageButton doFastForward;
+
+    @InjectViews({
+            R.id.up, R.id.down, R.id.left, R.id.right,
+            R.id.select, R.id.back, R.id.info, R.id.osd, R.id.context,
+    }) View[] animatedButtons;
 
     public AndroidRcView(Context context, Picasso picasso) {
         super(context, TAG);
@@ -108,6 +131,22 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     }
 
     @Override
+    public void animateIn(Rc.Button button) {
+        int i = indexOf(button);
+        if (i != -1) {
+            animatedButtons[i].startAnimation(animations.get()[BUTTON_IN]);
+        }
+    }
+
+    @Override
+    public void animateOut(Rc.Button button) {
+        int i = indexOf(button);
+        if (i != -1) {
+            animatedButtons[i].startAnimation(animations.get()[BUTTON_OUT]);
+        }
+    }
+
+    @Override
     public void say(String message, Object... fmtArgs) {
         theInfoHead.setText(String.format(message, fmtArgs));
     }
@@ -127,9 +166,9 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
         theTitle.setText(title);
         theDetails.setText(details);
 
-        Integer[] iconFor = icons.get();
-        doRewind.setImageResource(iconFor[showSkipIcons ? PREV : REWIND]);
-        doFastForward.setImageResource(iconFor[showSkipIcons ? NEXT : FORWARD]);
+        Integer[] iconOf = icons.get();
+        doRewind.setImageResource(iconOf[showSkipIcons ? PREV : REWIND]);
+        doFastForward.setImageResource(iconOf[showSkipIcons ? NEXT : FORWARD]);
 
         CharacterDrawable avatar = UIUtils.getCharacterAvatar(context, title);
         int width = theThumbnail.getWidth();
@@ -145,6 +184,21 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
                     .into(theThumbnail);
         } else {
             picasso.load(thumbnail).fit().centerCrop().into(theThumbnail);
+        }
+    }
+
+    private static int indexOf(Rc.Button button) {
+        switch (button) {
+            case UP: return 0;
+            case DOWN: return 1;
+            case LEFT: return 2;
+            case RIGHT: return 3;
+            case SELECT: return 4;
+            case BACK: return 5;
+            case INFO: return 6;
+            case OSD: return 7;
+            case CONTEXT: return 8;
+            default: return -1;
         }
     }
 

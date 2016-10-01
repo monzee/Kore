@@ -29,11 +29,13 @@ public class RcPresenter implements Rc.Actions {
     @Override
     public void didStartHoldingDown(Rc.Button button) {
         Log.I.to(view, "hold %s", button);
+        view.animateIn(button);
     }
 
     @Override
     public void didStopHoldingDown(Rc.Button button) {
         Log.I.to(view, "release %s", button);
+        view.animateOut(button);
     }
 
 }
