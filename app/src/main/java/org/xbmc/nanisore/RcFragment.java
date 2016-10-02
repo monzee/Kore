@@ -4,7 +4,6 @@ import android.content.Context;
 import android.os.Bundle;
 import android.support.annotation.IdRes;
 import android.support.v4.app.Fragment;
-import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.SoundEffectConstants;
@@ -16,8 +15,9 @@ import org.xbmc.kore.host.HostManager;
 import org.xbmc.kore.utils.UIUtils;
 import org.xbmc.nanisore.screens.rc.AndroidRcView;
 import org.xbmc.nanisore.screens.rc.Rc;
+import org.xbmc.nanisore.screens.rc.RcInteractor;
 import org.xbmc.nanisore.screens.rc.RcPresenter;
-import org.xbmc.nanisore.utils.Lazy;
+import org.xbmc.nanisore.utils.scheduling.AndroidLoaderRunner;
 
 import butterknife.ButterKnife;
 import butterknife.OnClick;
@@ -40,7 +40,8 @@ public class RcFragment extends Fragment {
         View rootView = inflater.inflate(R.layout.fragment_remote, container, false);
         Context context = getContext();
         HostManager hostManager = HostManager.getInstance(context);
-        user = new RcPresenter();
+        AndroidLoaderRunner runner = new AndroidLoaderRunner(getActivity());
+        user = new RcPresenter(new RcInteractor(runner));
         view = new AndroidRcView(context, hostManager.getPicasso());
         ButterKnife.inject(view, rootView);
         ButterKnife.inject(this, rootView);
@@ -65,11 +66,11 @@ public class RcFragment extends Fragment {
     boolean touch(View view, MotionEvent event) {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                this.view.animateIn(buttonOf(view.getId()));
+                this.view.showPressed(buttonOf(view.getId()));
                 break;
             case MotionEvent.ACTION_UP:  // fallthrough
             case MotionEvent.ACTION_CANCEL:
-                this.view.animateOut(buttonOf(view.getId()));
+                this.view.showNormal(buttonOf(view.getId()));
                 break;
         }
         return false;
@@ -114,24 +115,24 @@ public class RcFragment extends Fragment {
 
     private static Rc.Button buttonOf(@IdRes int id) {
         switch (id) {
+            case R.id.up: return Rc.Button.UP;
+            case R.id.down: return Rc.Button.DOWN;
+            case R.id.left: return Rc.Button.LEFT;
+            case R.id.right: return Rc.Button.RIGHT;
+            case R.id.select: return Rc.Button.SELECT;
+            case R.id.back: return Rc.Button.BACK;
+            case R.id.context: return Rc.Button.CONTEXT;
+            case R.id.play: return Rc.Button.PLAY;
+            case R.id.stop: return Rc.Button.STOP;
+            case R.id.fast_forward: return Rc.Button.FORWARD;
+            case R.id.rewind: return Rc.Button.REWIND;
+            case R.id.info: return Rc.Button.INFO;
+            case R.id.osd: return Rc.Button.OSD;
             case R.id.home: return Rc.Button.HOME;
             case R.id.movies: return Rc.Button.MOVIES;
             case R.id.tv_shows: return Rc.Button.SHOWS;
             case R.id.music: return Rc.Button.MUSIC;
             case R.id.pictures: return Rc.Button.PICTURES;
-            case R.id.fast_forward: return Rc.Button.FORWARD;
-            case R.id.rewind: return Rc.Button.REWIND;
-            case R.id.play: return Rc.Button.PLAY;
-            case R.id.stop: return Rc.Button.STOP;
-            case R.id.select: return Rc.Button.SELECT;
-            case R.id.back: return Rc.Button.BACK;
-            case R.id.info: return Rc.Button.INFO;
-            case R.id.osd: return Rc.Button.OSD;
-            case R.id.context: return Rc.Button.CONTEXT;
-            case R.id.up: return Rc.Button.UP;
-            case R.id.down: return Rc.Button.DOWN;
-            case R.id.left: return Rc.Button.LEFT;
-            case R.id.right: return Rc.Button.RIGHT;
             default: return null;
         }
     }

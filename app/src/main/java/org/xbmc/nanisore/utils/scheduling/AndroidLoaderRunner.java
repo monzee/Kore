@@ -10,6 +10,8 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
 
+import org.xbmc.nanisore.utils.Just;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
@@ -24,14 +26,13 @@ public class AndroidLoaderRunner extends BaseRunner {
     private static class Loadable<T> extends Loader<Task.Result<T>> {
         private final ExecutorService jobs;
         private final Task<T> task;
-        private final Handler uiHandler;
+        private final Handler uiHandler = new Handler(Looper.getMainLooper());
         private volatile boolean stale = true;
         private Future<?> pending;
         private Task.Result<T> result;
 
         Loadable(Context context, Task<T> task, ExecutorService jobs) {
             super(context);
-            uiHandler = new Handler(Looper.getMainLooper());
             this.task = task;
             this.jobs = jobs;
         }
@@ -48,11 +49,11 @@ public class AndroidLoaderRunner extends BaseRunner {
                     Throwable error = null;
                     try {
                         value = task.apply();
-                        stale = false;
                     } catch (Throwable e) {
                         error = e;
                     } finally {
                         result = new Task.Result<>(value, error);
+                        stale = false;
                         uiHandler.post(new Runnable() {
                             @Override
                             public void run() {
@@ -169,6 +170,56 @@ public class AndroidLoaderRunner extends BaseRunner {
                 manager.destroyLoader(id);
             }
         };
+    }
+
+    // semantic aliases for when used as a cache and not as a runner
+
+    public <T> void put(String name, T item) {
+        schedule(Task.just(name, item));
+    }
+
+    public <T> void put(String name, Producer<T> task) {
+        schedule(Task.unit(name, task));
+    }
+
+    public <T> void put(Task<T> task) {
+        schedule(task);
+    }
+
+    public <T> void peek(String name, final Just<T> then) {
+        schedule(Task.<T>just(name, null), new Continuation<T>() {
+            @Override
+            public void accept(T result, Throwable error) {
+                then.got(result);
+            }
+        });
+    }
+
+    public <T> void peek(String name, T whenAbsent, final Just<T> then) {
+        schedule(Task.just(name, whenAbsent), new Continuation<T>() {
+            @Override
+            public void accept(T result, Throwable error) {
+                then.got(result);
+            }
+        });
+    }
+
+    public <T> void take(String name, final Just<T> then) {
+        once(Task.<T>just(name, null), new Continuation<T>() {
+            @Override
+            public void accept(T result, Throwable error) {
+                then.got(result);
+            }
+        });
+    }
+
+    public <T> void take(String name, T whenAbsent, final Just<T> then) {
+        once(Task.just(name, whenAbsent), new Continuation<T>() {
+            @Override
+            public void accept(T result, Throwable error) {
+                then.got(result);
+            }
+        });
     }
 
 }

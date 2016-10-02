@@ -3,7 +3,7 @@ package org.xbmc.nanisore.utils.scheduling;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public class ForeverRunner extends BaseRunner {
+public class PeriodicRunner extends BaseRunner {
 
     private class Repeater<T> implements Canceller {
 
@@ -66,19 +66,19 @@ public class ForeverRunner extends BaseRunner {
     private final int delay;
     private final int interval;
 
-    public ForeverRunner(Runner delegate, int interval) {
+    public PeriodicRunner(Runner delegate, int interval) {
         this(delegate, interval, interval);
     }
 
-    public ForeverRunner(Runner delegate, int delay, int interval) {
+    public PeriodicRunner(Runner delegate, int delay, int interval) {
         this(delegate, Executors.newSingleThreadExecutor(), delay, interval);
     }
 
-    public ForeverRunner(Runner delegate, Executor executor, int interval) {
+    public PeriodicRunner(Runner delegate, Executor executor, int interval) {
         this(delegate, executor, interval, interval);
     }
 
-    public ForeverRunner(Runner delegate, Executor executor, int delay, int interval) {
+    public PeriodicRunner(Runner delegate, Executor executor, int delay, int interval) {
         this.delegate = delegate;
         this.executor = executor;
         this.delay = delay;

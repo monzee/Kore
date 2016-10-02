@@ -8,14 +8,12 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
-public class ForeverRunnerTest {
+public class PeriodicRunnerTest {
 
     private static final ExecutorService EXEC = Executors.newCachedThreadPool();
 
@@ -29,7 +27,7 @@ public class ForeverRunnerTest {
         final AtomicInteger counter = new AtomicInteger(1);
         final List<Integer> sahod = new ArrayList<>();
         final CountDownLatch done = new CountDownLatch(5);
-        Runner r = new ForeverRunner(new BlockingRunner(), EXEC, 16);
+        Runner r = new PeriodicRunner(new BlockingRunner(), EXEC, 16);
         Canceller c = r.schedule(new Producer<Integer>() {
             @Override
             public Integer apply() throws Throwable {
@@ -50,7 +48,7 @@ public class ForeverRunnerTest {
 
     @Test
     public void cancel_works() throws InterruptedException {
-        Runner r = new ForeverRunner(new BlockingRunner(), EXEC, 16);
+        Runner r = new PeriodicRunner(new BlockingRunner(), EXEC, 16);
         final AtomicInteger count = new AtomicInteger(0);
         r.once(Task.<Void>just(null), new Continuation<Void>() {
             @Override
@@ -74,7 +72,7 @@ public class ForeverRunnerTest {
             done = new CountDownLatch(times);
         }
 
-        void run(ForeverRunner runner, Runnable then) {
+        void run(PeriodicRunner runner, Runnable then) {
             Canceller c = runner.schedule(new Producer<Integer>() {
                 @Override
                 public Integer apply() throws Throwable {
@@ -82,9 +80,9 @@ public class ForeverRunnerTest {
                 }
             }, new Continuation<Integer>() {
                 @Override
-                public void accept(Integer index, Throwable error) {
-                    last = index + 1;
-                    numbers[index] = last;
+                public void accept(Integer i, Throwable error) {
+                    last = i + 1;
+                    numbers[i] = last;
                     done.countDown();
                 }
             });
@@ -104,7 +102,7 @@ public class ForeverRunnerTest {
         // flaky test; increase this and it might pass
         final int every = 50;
         final int ticks = 10;
-        Runner r = new ForeverRunner(new BlockingRunner(), EXEC, every * 5, every);
+        Runner r = new PeriodicRunner(new BlockingRunner(), EXEC, every * 5, every);
         final AtomicInteger count = new AtomicInteger(0);
         final Canceller c = r.schedule(new Producer<Void>() {
             @Override
@@ -115,7 +113,7 @@ public class ForeverRunnerTest {
         });
         final Repeat metronome = new Repeat(ticks);
         metronome.run(
-                new ForeverRunner(new ExecutorRunner(EXEC), EXEC, every),
+                new PeriodicRunner(new ExecutorRunner(EXEC), EXEC, every),
                 new Runnable() {
                     @Override
                     public void run() {
@@ -132,7 +130,7 @@ public class ForeverRunnerTest {
     public void works_with_caching_runner() {
         final Repeat r = new Repeat(5);
         CachingRunner delegate = new CachingRunner(new BlockingRunner());
-        r.run(new ForeverRunner(delegate, EXEC, 16), new Runnable() {
+        r.run(new PeriodicRunner(delegate, EXEC, 16), new Runnable() {
             @Override
             public void run() {
                 assertThat(r.last, is(5));

@@ -7,8 +7,8 @@ import android.preference.PreferenceManager;
 import android.support.annotation.IdRes;
 import android.support.v4.text.TextDirectionHeuristicsCompat;
 import android.text.TextUtils;
-import android.util.SparseArray;
 import android.view.KeyEvent;
+import android.view.Menu;
 import android.view.MenuItem;
 
 import org.xbmc.kore.R;
@@ -17,6 +17,7 @@ import org.xbmc.kore.host.HostManager;
 import org.xbmc.kore.ui.BaseActivity;
 import org.xbmc.kore.ui.NowPlayingFragment.NowPlayingListener;
 import org.xbmc.kore.ui.SendTextDialogFragment.SendTextDialogListener;
+import org.xbmc.nanisore.injection.Scope;
 import org.xbmc.nanisore.screens.AndroidOptions;
 import org.xbmc.nanisore.screens.remote.AndroidRemoteKodiProxy;
 import org.xbmc.nanisore.screens.remote.AndroidRemoteView;
@@ -68,7 +69,7 @@ public class RemoteActivity extends BaseActivity
     }
 
     @Override
-    public boolean onCreateOptionsMenu(android.view.Menu menu) {
+    public boolean onCreateOptionsMenu(Menu menu) {
         if (view.shouldInflateMenu()) {
             getMenuInflater().inflate(R.menu.remote, menu);
             return true;
@@ -137,7 +138,7 @@ public class RemoteActivity extends BaseActivity
                 case Intent.ACTION_SEND:
                     String extra = i.getStringExtra(Intent.EXTRA_TEXT);
                     if (!TextUtils.isEmpty(extra)) {
-                        return uriFromYoutubeShare(extra);
+                        return uriFromSharedText(extra);
                     }
                     break;
                 case Intent.ACTION_VIEW:
@@ -147,7 +148,7 @@ public class RemoteActivity extends BaseActivity
         return null;
     }
 
-    private String uriFromYoutubeShare(String extra) {
+    private String uriFromSharedText(String extra) {
         for (String part : extra.split("\\s+")) {
             if (part.startsWith("http://") || part.startsWith("https://")) {
                 return part;

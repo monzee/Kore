@@ -27,6 +27,10 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
 
     private static final String TAG = AndroidRcView.class.getSimpleName();
 
+    /**
+     * The values of the following ints should match the array indexes
+     * of the corresponding attrs in {@link #icons}
+     */
     private static final int FORWARD = 0;
     private static final int REWIND = 1;
     private static final int NEXT = 2;
@@ -34,17 +38,23 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     private static final int PLAY = 4;
     private static final int PAUSE = 5;
 
+    /**
+     * The values of the following ints should match the array indexes
+     * of the corresponding Animation in {@link #animations}
+     */
     private static final int BUTTON_IN = 0;
     private static final int BUTTON_OUT = 1;
 
     private final Lazy<Integer[]> icons = new Lazy<Integer[]>() {
         @Override
         protected Integer[] value() {
+            // the order of the elements should match the int constants above
             TypedArray xs = context.getTheme().obtainStyledAttributes(new int[] {
                     R.attr.iconFastForward, R.attr.iconRewind,
                     R.attr.iconNext, R.attr.iconPrevious,
                     R.attr.iconPlay, R.attr.iconPause,
             });
+            // likewise
             Integer[] fallback = new Integer[] {
                     R.drawable.ic_fast_forward_white_24dp,
                     R.drawable.ic_fast_rewind_white_24dp,
@@ -64,6 +74,7 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     private final Lazy<Animation[]> animations = new Lazy<Animation[]>() {
         @Override
         protected Animation[] value() {
+            // the order of the elements should match the BUTTON_* constants
             Animation[] xs = new Animation[] {
                     AnimationUtils.loadAnimation(context, R.anim.button_in),
                     AnimationUtils.loadAnimation(context, R.anim.button_out)
@@ -92,6 +103,10 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     @InjectView(R.id.rewind) ImageButton doRewind;
     @InjectView(R.id.fast_forward) ImageButton doFastForward;
 
+    /**
+     * The order of the IDs should match the order of the enum branches
+     * in {@link #indexOf}
+     */
     @InjectViews({
             R.id.up, R.id.down, R.id.left, R.id.right,
             R.id.select, R.id.back, R.id.info, R.id.osd, R.id.context,
@@ -131,7 +146,7 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     }
 
     @Override
-    public void animateIn(Rc.Button button) {
+    public void showPressed(Rc.Button button) {
         int i = indexOf(button);
         if (i != -1) {
             animatedButtons[i].startAnimation(animations.get()[BUTTON_IN]);
@@ -139,7 +154,7 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
     }
 
     @Override
-    public void animateOut(Rc.Button button) {
+    public void showNormal(Rc.Button button) {
         int i = indexOf(button);
         if (i != -1) {
             animatedButtons[i].startAnimation(animations.get()[BUTTON_OUT]);
@@ -187,6 +202,9 @@ public class AndroidRcView extends AndroidLogger implements Rc.Ui {
         }
     }
 
+    /**
+     * The order should match the list of IDs in {@link #animatedButtons}
+     */
     private static int indexOf(Rc.Button button) {
         switch (button) {
             case UP: return 0;

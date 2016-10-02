@@ -16,8 +16,8 @@ public interface Rc {
         void togglePlayPauseIcon(boolean showPlay);
         void toggleMediaInfoPanel(boolean showMedia);
         void toggleRemotePanel(boolean visible);
-        void animateIn(Button button);
-        void animateOut(Button button);
+        void showPressed(Button button);
+        void showNormal(Button button);
         void say(String message, Object... fmtArgs);
         void mumble(String message, Object... fmtArgs);
         void show(
@@ -41,6 +41,9 @@ public interface Rc {
         void connectToEventServer(MightFail<?> then);
         void changeSpeed(boolean faster, OnSpeedChange then);
         void fireAndLogTo(Console console, Runnable action);
+        void fireAndFireAndFire(String name, Runnable action);
+        void stop(String name);
+        void stop();
     }
 
     class State {
@@ -54,7 +57,7 @@ public interface Rc {
 
     /**
      * Everything is sync because the default listener in the reference impl
-     * logs all errors. Unfortunate because I can't optimize them by handle
+     * logs all errors. Unfortunate because I can't optimize them by handling
      * logging in a single listener because the proxy shouldn't know about
      * the view.
      */
@@ -87,10 +90,6 @@ public interface Rc {
         SELECT, BACK, INFO, CONTEXT, OSD,
         HOME, MOVIES, SHOWS, MUSIC, PICTURES,
         FORWARD, REWIND, PLAY, STOP
-    }
-
-    enum Message {
-        CANT_SETUP_EVENT_SERVER
     }
 
 }
