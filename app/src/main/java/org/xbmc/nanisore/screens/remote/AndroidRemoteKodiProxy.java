@@ -19,7 +19,7 @@ import org.xbmc.kore.jsonrpc.type.GlobalType;
 import org.xbmc.kore.jsonrpc.type.PlayerType;
 import org.xbmc.kore.jsonrpc.type.PlaylistType;
 import org.xbmc.kore.utils.NetUtils;
-import org.xbmc.nanisore.utils.Either;
+import org.xbmc.nanisore.utils.values.Either;
 
 import java.util.List;
 

@@ -25,7 +25,7 @@ import org.xbmc.kore.ui.views.CirclePageIndicator;
 import org.xbmc.kore.utils.TabsAdapter;
 import org.xbmc.nanisore.RcFragment;
 import org.xbmc.nanisore.screens.AndroidLogger;
-import org.xbmc.nanisore.utils.Lazy;
+import org.xbmc.nanisore.utils.values.Lazy;
 
 import java.util.Arrays;
 

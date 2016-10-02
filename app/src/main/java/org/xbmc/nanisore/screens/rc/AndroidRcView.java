@@ -18,7 +18,7 @@ import org.xbmc.kore.R;
 import org.xbmc.kore.utils.CharacterDrawable;
 import org.xbmc.kore.utils.UIUtils;
 import org.xbmc.nanisore.screens.AndroidLogger;
-import org.xbmc.nanisore.utils.Lazy;
+import org.xbmc.nanisore.utils.values.Lazy;
 
 import butterknife.InjectView;
 import butterknife.InjectViews;

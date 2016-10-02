@@ -1,6 +1,6 @@
 package org.xbmc.nanisore.utils.scheduling;
 
-import org.xbmc.nanisore.utils.Try;
+import org.xbmc.nanisore.utils.values.Try;
 
 /**
  * Interface for running tasks and handling the (possibly erroneous) result

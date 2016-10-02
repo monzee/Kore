@@ -17,14 +17,12 @@ import org.xbmc.kore.host.HostManager;
 import org.xbmc.kore.ui.BaseActivity;
 import org.xbmc.kore.ui.NowPlayingFragment.NowPlayingListener;
 import org.xbmc.kore.ui.SendTextDialogFragment.SendTextDialogListener;
-import org.xbmc.nanisore.injection.Scope;
 import org.xbmc.nanisore.screens.AndroidOptions;
 import org.xbmc.nanisore.screens.remote.AndroidRemoteKodiProxy;
 import org.xbmc.nanisore.screens.remote.AndroidRemoteView;
 import org.xbmc.nanisore.screens.remote.Remote;
 import org.xbmc.nanisore.screens.remote.RemoteInteractor;
 import org.xbmc.nanisore.screens.remote.RemotePresenter;
-import org.xbmc.nanisore.utils.Lazy;
 import org.xbmc.nanisore.utils.scheduling.AndroidLoaderRunner;
 
 public class RemoteActivity extends BaseActivity

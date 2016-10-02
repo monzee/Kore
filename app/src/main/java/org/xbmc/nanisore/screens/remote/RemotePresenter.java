@@ -6,10 +6,10 @@ import org.xbmc.kore.jsonrpc.type.ListType;
 import org.xbmc.kore.jsonrpc.type.PlayerType;
 import org.xbmc.kore.jsonrpc.type.PlayerType.GetActivePlayersReturnType;
 import org.xbmc.nanisore.screens.Conventions;
-import org.xbmc.nanisore.utils.Lazy;
 import org.xbmc.nanisore.utils.Log;
 import org.xbmc.nanisore.utils.MightFail;
 import org.xbmc.nanisore.utils.Options;
+import org.xbmc.nanisore.utils.values.Lazy;
 
 import java.net.MalformedURLException;
 import java.net.URL;

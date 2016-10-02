@@ -1,7 +1,7 @@
 package org.xbmc.nanisore.utils.scheduling;
 
-import org.xbmc.nanisore.utils.Either;
-import org.xbmc.nanisore.utils.Try;
+import org.xbmc.nanisore.utils.values.Either;
+import org.xbmc.nanisore.utils.values.Try;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;

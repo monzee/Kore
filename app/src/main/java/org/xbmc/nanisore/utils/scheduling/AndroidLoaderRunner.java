@@ -10,7 +10,8 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
 
-import org.xbmc.nanisore.utils.Just;
+import org.xbmc.nanisore.utils.values.AndroidLoaderCache;
+import org.xbmc.nanisore.utils.values.Store;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -172,54 +173,8 @@ public class AndroidLoaderRunner extends BaseRunner {
         };
     }
 
-    // semantic aliases for when used as a cache and not as a runner
-
-    public <T> void put(String name, T item) {
-        schedule(Task.just(name, item));
-    }
-
-    public <T> void put(String name, Producer<T> task) {
-        schedule(Task.unit(name, task));
-    }
-
-    public <T> void put(Task<T> task) {
-        schedule(task);
-    }
-
-    public <T> void peek(String name, final Just<T> then) {
-        schedule(Task.<T>just(name, null), new Continuation<T>() {
-            @Override
-            public void accept(T result, Throwable error) {
-                then.got(result);
-            }
-        });
-    }
-
-    public <T> void peek(String name, T whenAbsent, final Just<T> then) {
-        schedule(Task.just(name, whenAbsent), new Continuation<T>() {
-            @Override
-            public void accept(T result, Throwable error) {
-                then.got(result);
-            }
-        });
-    }
-
-    public <T> void take(String name, final Just<T> then) {
-        once(Task.<T>just(name, null), new Continuation<T>() {
-            @Override
-            public void accept(T result, Throwable error) {
-                then.got(result);
-            }
-        });
-    }
-
-    public <T> void take(String name, T whenAbsent, final Just<T> then) {
-        once(Task.just(name, whenAbsent), new Continuation<T>() {
-            @Override
-            public void accept(T result, Throwable error) {
-                then.got(result);
-            }
-        });
+    public Store asStore() {
+        return new AndroidLoaderCache(context, manager);
     }
 
 }

@@ -2,6 +2,7 @@ package org.xbmc.nanisore.utils;
 
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.xbmc.nanisore.utils.values.Either;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;

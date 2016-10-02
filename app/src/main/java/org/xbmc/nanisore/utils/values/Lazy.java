@@ -1,4 +1,4 @@
-package org.xbmc.nanisore.utils;
+package org.xbmc.nanisore.utils.values;
 
 public abstract class Lazy<T> {
     private T value;

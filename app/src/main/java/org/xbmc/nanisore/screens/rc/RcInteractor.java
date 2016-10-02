@@ -2,6 +2,7 @@ package org.xbmc.nanisore.screens.rc;
 
 import org.xbmc.kore.utils.UIUtils;
 import org.xbmc.nanisore.utils.Console;
+import org.xbmc.nanisore.utils.Log;
 import org.xbmc.nanisore.utils.MightFail;
 import org.xbmc.nanisore.utils.scheduling.BlockingRunner;
 import org.xbmc.nanisore.utils.scheduling.Canceller;
@@ -47,21 +48,6 @@ public class RcInteractor implements Rc.UseCases {
     }
 
     @Override
-    public void connectToEventServer(MightFail<?> then) {
-
-    }
-
-    @Override
-    public void changeSpeed(boolean faster, Rc.OnSpeedChange then) {
-
-    }
-
-    @Override
-    public void fireAndLogTo(Console console, Runnable action) {
-
-    }
-
-    @Override
     public void fireAndForget(final Runnable action) {
         runner.once(new Producer<Void>() {
             @Override
@@ -73,14 +59,40 @@ public class RcInteractor implements Rc.UseCases {
     }
 
     @Override
+    public void connectToEventServer(MightFail<?> then) {
+
+    }
+
+    @Override
+    public void changeSpeed(boolean faster, Rc.OnSpeedChange then) {
+
+    }
+
+    @Override
+    public void fireAndLogTo(final Console console, final Runnable action) {
+        runner.once(new Producer<Void>() {
+            @Override
+            public Void apply() throws Throwable {
+                try {
+                    action.run();
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    Log.E.to(console, "RcInteractor action failed: %s", e);
+                }
+                return null;
+            }
+        });
+    }
+
+    @Override
     public void fireAndFireAndFire(String name, final Runnable action) {
-        running.put(name, repeater.schedule(Task.unit(name, new Producer<Void>() {
+        running.put(name, repeater.schedule(new Producer<Void>() {
             @Override
             public Void apply() {
                 action.run();
                 return null;
             }
-        })));
+        }));
     }
 
     @Override
@@ -88,6 +100,7 @@ public class RcInteractor implements Rc.UseCases {
         Canceller c = running.get(name);
         if (c != null) {
             c.cancel();
+            running.remove(name);
         }
     }
 
@@ -96,5 +109,6 @@ public class RcInteractor implements Rc.UseCases {
         for (String key : running.keySet()) {
             running.get(key).cancel();
         }
+        running.clear();
     }
 }

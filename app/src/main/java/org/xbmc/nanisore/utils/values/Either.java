@@ -1,4 +1,4 @@
-package org.xbmc.nanisore.utils;
+package org.xbmc.nanisore.utils.values;
 
 public class Either<L extends Throwable, R> implements Try<R> {
     private boolean done;
