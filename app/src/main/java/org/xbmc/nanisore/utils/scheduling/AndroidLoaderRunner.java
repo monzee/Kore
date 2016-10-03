@@ -22,7 +22,7 @@ import java.util.concurrent.Future;
  * Values are kept until the user explicitly leaves the activity, meaning
  * they survive config changes like device rotation.
  */
-public class AndroidLoaderRunner extends BaseRunner {
+public class AndroidLoaderRunner extends BaseRunner implements CachingRunner {
 
     private static class Loadable<T> extends Loader<Task.Result<T>> {
         private final ExecutorService jobs;
@@ -173,7 +173,16 @@ public class AndroidLoaderRunner extends BaseRunner {
         };
     }
 
-    public Store asStore() {
+    /**
+     * This {@link Store} is synchronized with this runner if you can match
+     * the IDs.
+     *
+     * The IDs of the future values stored by the Store are prefixed with
+     * {@code "loader-cache:"}. The IDs stored by this runner is the same
+     * as the name of the task that produced the value.
+     */
+    @Override
+    public Store toStore() {
         return new AndroidLoaderCache(context, manager);
     }
 

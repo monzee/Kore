@@ -46,16 +46,19 @@ public class PeriodicRunnerTest {
         assertThat(sahod, hasItems(1, 2, 3, 4, 5));
     }
 
-    @Test
+    @Test(timeout = 1000)
     public void cancel_works() throws InterruptedException {
         Runner r = new PeriodicRunner(new BlockingRunner(), EXEC, 16);
         final AtomicInteger count = new AtomicInteger(0);
+        final CountDownLatch done = new CountDownLatch(1);
         r.once(Task.<Void>just(null), new Continuation<Void>() {
             @Override
             public void accept(Void result, Throwable error) {
                 count.getAndIncrement();
+                done.countDown();
             }
         });
+        done.await();
         assertEquals(1, count.get());
     }
 
@@ -129,7 +132,7 @@ public class PeriodicRunnerTest {
     @Test(timeout = 1000)
     public void works_with_caching_runner() {
         final Repeat r = new Repeat(5);
-        CachingRunner delegate = new CachingRunner(new BlockingRunner());
+        MemoRunner delegate = new MemoRunner(new BlockingRunner());
         r.run(new PeriodicRunner(delegate, EXEC, 16), new Runnable() {
             @Override
             public void run() {

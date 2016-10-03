@@ -2,47 +2,44 @@ package org.xbmc.nanisore.screens.rc;
 
 import org.xbmc.nanisore.utils.Console;
 import org.xbmc.nanisore.utils.Log;
+import org.xbmc.nanisore.utils.scheduling.CachingRunner;
 import org.xbmc.nanisore.utils.scheduling.Canceller;
 import org.xbmc.nanisore.utils.scheduling.Continuation;
 import org.xbmc.nanisore.utils.scheduling.Producer;
 import org.xbmc.nanisore.utils.scheduling.Runner;
-import org.xbmc.nanisore.utils.scheduling.Task;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class RcInteractor implements Rc.UseCases {
 
-    private final Runner runner;
+    private final CachingRunner cache;
     private final Runner repeater;
     private final Map<String, Canceller> running = new HashMap<>();
 
-    public RcInteractor(Runner runner, Runner repeater) {
-        this.runner = runner;
+    public RcInteractor(CachingRunner cache, Runner repeater) {
+        this.cache = cache;
         this.repeater = repeater;
     }
 
     @Override
     public void save(Rc.State state) {
-        runner.schedule(Task.just("init-rc-fragment", state));
+        cache.put("init-rc-fragment", state);
     }
 
     @Override
     public void restore(final Just<Rc.State> then) {
-        runner.once(
-                Task.just("init-rc-fragment", new Rc.State()),
-                new Continuation<Rc.State>() {
-                    @Override
-                    public void accept(Rc.State result, Throwable error) {
-                        then.got(result);
-                    }
-                }
-        );
+        cache.take("init-rc-fragment", new Rc.State(), new Continuation<Rc.State>() {
+            @Override
+            public void accept(Rc.State result, Throwable error) {
+                then.got(result);
+            }
+        });
     }
 
     @Override
     public void fireAndForget(final Runnable action) {
-        runner.once(new Producer<Void>() {
+        cache.once(new Producer<Void>() {
             @Override
             public Void apply() throws Throwable {
                 action.run();
@@ -62,7 +59,7 @@ public class RcInteractor implements Rc.UseCases {
 
     @Override
     public void fireAndLogTo(final Console console, final Runnable action) {
-        runner.once(new Producer<Void>() {
+        cache.once(new Producer<Void>() {
             @Override
             public Void apply() throws Throwable {
                 try {

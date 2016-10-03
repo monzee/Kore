@@ -1,48 +1,32 @@
 package org.xbmc.nanisore.utils.scheduling;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.xbmc.nanisore.utils.values.Store;
 
-public class CachingRunner extends BaseRunner {
-    private final Runner delegate;
-    private final Map<String, Call> cache = new HashMap<>();
+public interface CachingRunner extends Runner {
 
-    private static class Call {
-        Task.Result<?> result;
-        Canceller canceller;
-    }
+    /**
+     * Puts the value in the cache if not currently present then calls
+     * a function with the cached value or the given default value.
+     */
+    <T> void put(String key, T value);
 
-    public CachingRunner(Runner delegate) {
-        this.delegate = delegate;
-    }
+    /**
+     * Gets a cached value, runs the function then removes the value from
+     * the cache.
+     *
+     * @param then Will be called with defaultValue if the key is not present.
+     *             Will never be called with a non-null error.
+     * @param <T> The type of the stored value.
+     */
+    <T> void take(String key, T defaultValue, Continuation<T> then);
 
-    @Override
-    public <T> Canceller schedule(Producer<T> task, final Continuation<T> handler) {
-        final Task<T> t = Task.unit(task);
-        if (cache.containsKey(t.id)) {
-            Call c = cache.get(t.id);
-            //noinspection unchecked
-            handler.accept((T) c.result.value, c.result.error);
-            return c.canceller;
-        } else {
-            final Call c = new Call();
-            final Canceller canceller = delegate.schedule(t, new Continuation<T>() {
-                @Override
-                public void accept(T result, Throwable error) {
-                    c.result = new Task.Result<>(result, error);
-                    handler.accept(result, error);
-                }
-            });
-            c.canceller = new Canceller() {
-                @Override
-                public void cancel() {
-                    canceller.cancel();
-                    cache.remove(t.id);
-                }
-            };
-            cache.put(t.id, c);
-            return c.canceller;
-        }
-    }
+    /**
+     * Returns a {@link Store} that contains all the cached results so far.
+     *
+     * There is no guarantee that this store will be synchronized with this
+     * runner. Any future changes to the store or this runner's cached values
+     * may not necessarily be seen in the other.
+     */
+    Store toStore();
 
 }

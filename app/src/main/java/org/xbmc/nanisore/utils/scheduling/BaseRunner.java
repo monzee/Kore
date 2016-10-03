@@ -64,6 +64,17 @@ public abstract class BaseRunner implements Runner {
         once(task, NOOP);
     }
 
+    // not part of the Runner interface but may serve as default
+    // implementations for CachingRunner
+
+    public <T> void put(String key, T value) {
+        schedule(Task.just(key, value));
+    }
+
+    public <T> void take(String key, T defaultValue, Continuation<T> handler) {
+        once(Task.just(key, defaultValue), handler);
+    }
+
     private static <T> Continuation<T> toContinuation(final Try.Handler<T> handler) {
         return new Continuation<T>() {
             @Override

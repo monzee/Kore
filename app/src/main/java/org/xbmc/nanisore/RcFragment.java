@@ -46,8 +46,7 @@ public class RcFragment extends Fragment {
         View rootView = inflater.inflate(R.layout.fragment_remote, container, false);
         Context context = getContext();
         HostManager hostManager = HostManager.getInstance(context);
-        AndroidRcKodiProxy kodi = new AndroidRcKodiProxy(hostManager.getConnection());
-        ExecutorService asyncTaskTpe = (ExecutorService) AsyncTask.THREAD_POOL_EXECUTOR;
+        ExecutorService threadPool = (ExecutorService) AsyncTask.THREAD_POOL_EXECUTOR;
         PeriodicRunner repeater = new PeriodicRunner(
                 /**
                  * can't use a blocking runner here unless i use a HandlerThread in
@@ -56,14 +55,14 @@ public class RcFragment extends Fragment {
                  * a loader runner here is too heavy for what it's being used for,
                  * so i'm using an ExecutorRunner.
                  */
-                new ExecutorRunner(asyncTaskTpe),
-                asyncTaskTpe,
+                new ExecutorRunner(threadPool),
+                threadPool,
                 UIUtils.initialButtonRepeatInterval,
                 UIUtils.buttonRepeatInterval
         );
         user = new RcPresenter(
                 new RcInteractor(new AndroidLoaderRunner(getActivity()), repeater),
-                kodi
+                new AndroidRcKodiProxy(hostManager.getConnection())
         );
         view = new AndroidRcView(context, hostManager.getPicasso());
         ButterKnife.inject(view, rootView);
