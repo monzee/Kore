@@ -174,7 +174,7 @@ public class RemotePresenter implements Remote.Actions {
                 will.maybeClearPlaylist(report(new Conventions.Just<Boolean>() {
                     @Override
                     public void got(Boolean result) {
-                        Conventions.Just<Void> fileEnqueued = new Conventions.Just<Void>() {
+                        will.enqueueFile(uriToAddon, result, report(new Conventions.Just<Void>() {
                             @Override
                             public void got(Void ignored) {
                                 state.videoToShare = null;
@@ -182,8 +182,7 @@ public class RemotePresenter implements Remote.Actions {
                                     view.refreshPlaylist();
                                 }
                             }
-                        };
-                        will.enqueueFile(uriToAddon, result, report(fileEnqueued));
+                        }));
                     }
                 }));
             }

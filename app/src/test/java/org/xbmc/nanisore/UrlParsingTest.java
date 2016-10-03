@@ -19,6 +19,12 @@ public class UrlParsingTest {
         assertThat(path, startsWith("/"));
     }
 
+    @Test
+    public void query_doesnt_start_with_a_huh() throws MalformedURLException {
+        String url = "https://www.youtube.com/watch?v=uNZnftSksYg";
+        assertThat(new URL(url).getQuery(), not(startsWith("?")));
+    }
+
     private final Pattern getQueryVar = Pattern.compile("(?:^|&)v=([^&]+)");
 
     private void matchUrl(String url) throws MalformedURLException {

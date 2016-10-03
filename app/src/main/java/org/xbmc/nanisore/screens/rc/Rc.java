@@ -37,10 +37,10 @@ public interface Rc {
     }
 
     interface UseCases extends Conventions<State> {
-        void connectToEventServer(Maybe<?> then);
+        void connectToEventServer(Maybe<Void> then);
         void changeSpeed(boolean faster, Just<Integer> then);
         void fireAndLogTo(Console console, Runnable action);
-        void fireAndFireAndFire(String name, Runnable action);
+        void fireRepeatedly(String name, Runnable action);
         void stop(String name);
         void stop();
     }
@@ -72,12 +72,12 @@ public interface Rc {
         void tryShows();
         void tryMusic();
         void tryPictures();
-        void trySpeedUp();
-        void trySlowDown();
-        void tryFastForward();
-        void tryRewind();
-        void tryPlay();
-        void tryStop();
+        void trySpeedUp(int playerId);
+        void trySlowDown(int playerId);
+        void tryFastForward(int playerId);
+        void tryRewind(int playerId);
+        void tryPlay(int playerId);
+        void tryStop(int playerId);
     }
 
     enum Button {
@@ -85,6 +85,17 @@ public interface Rc {
         SELECT, BACK, INFO, CONTEXT, OSD,
         HOME, MOVIES, SHOWS, MUSIC, PICTURES,
         FORWARD, REWIND, PLAY, STOP
+    }
+
+    class RpcError extends RuntimeException {
+        public final int code;
+        public final String description;
+
+        RpcError(int code, String description) {
+            super("Kodi RPC error: " + description);
+            this.code = code;
+            this.description = description;
+        }
     }
 
 }

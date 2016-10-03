@@ -1,6 +1,7 @@
 package org.xbmc.nanisore;
 
 import android.content.Context;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.IdRes;
 import android.support.v4.app.Fragment;
@@ -13,11 +14,16 @@ import android.view.ViewGroup;
 import org.xbmc.kore.R;
 import org.xbmc.kore.host.HostManager;
 import org.xbmc.kore.utils.UIUtils;
+import org.xbmc.nanisore.screens.rc.AndroidRcKodiProxy;
 import org.xbmc.nanisore.screens.rc.AndroidRcView;
 import org.xbmc.nanisore.screens.rc.Rc;
 import org.xbmc.nanisore.screens.rc.RcInteractor;
 import org.xbmc.nanisore.screens.rc.RcPresenter;
 import org.xbmc.nanisore.utils.scheduling.AndroidLoaderRunner;
+import org.xbmc.nanisore.utils.scheduling.ExecutorRunner;
+import org.xbmc.nanisore.utils.scheduling.PeriodicRunner;
+
+import java.util.concurrent.ExecutorService;
 
 import butterknife.ButterKnife;
 import butterknife.OnClick;
@@ -40,8 +46,25 @@ public class RcFragment extends Fragment {
         View rootView = inflater.inflate(R.layout.fragment_remote, container, false);
         Context context = getContext();
         HostManager hostManager = HostManager.getInstance(context);
-        AndroidLoaderRunner runner = new AndroidLoaderRunner(getActivity());
-        user = new RcPresenter(new RcInteractor(runner));
+        AndroidRcKodiProxy kodi = new AndroidRcKodiProxy(hostManager.getConnection());
+        ExecutorService asyncTaskTpe = (ExecutorService) AsyncTask.THREAD_POOL_EXECUTOR;
+        PeriodicRunner repeater = new PeriodicRunner(
+                /**
+                 * can't use a blocking runner here unless i use a HandlerThread in
+                 * {@link AndroidRcKodiProxy} (same issue as described in
+                 * {@link org.xbmc.nanisore.screens.remote.AndroidRemoteKodiProxy})
+                 * a loader runner here is too heavy for what it's being used for,
+                 * so i'm using an ExecutorRunner.
+                 */
+                new ExecutorRunner(asyncTaskTpe),
+                asyncTaskTpe,
+                UIUtils.initialButtonRepeatInterval,
+                UIUtils.buttonRepeatInterval
+        );
+        user = new RcPresenter(
+                new RcInteractor(new AndroidLoaderRunner(getActivity()), repeater),
+                kodi
+        );
         view = new AndroidRcView(context, hostManager.getPicasso());
         ButterKnife.inject(view, rootView);
         ButterKnife.inject(this, rootView);

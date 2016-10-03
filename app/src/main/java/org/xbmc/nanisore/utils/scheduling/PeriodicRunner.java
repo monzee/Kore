@@ -17,14 +17,14 @@ public class PeriodicRunner extends BaseRunner {
             this.task = task.map(new Task.Transform<T, T>() {
                 @Override
                 public T apply(T value) throws Throwable {
-                    sleep(firstRun ? delay : interval);
+                    againAfter(firstRun ? delay : interval);
                     return value;
                 }
             });
             this.handler = handler;
         }
 
-        void sleep(final int millis) {
+        void againAfter(final int millis) {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {

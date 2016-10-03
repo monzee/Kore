@@ -1,12 +1,9 @@
 package org.xbmc.nanisore.screens.rc;
 
-import org.xbmc.kore.utils.UIUtils;
 import org.xbmc.nanisore.utils.Console;
 import org.xbmc.nanisore.utils.Log;
-import org.xbmc.nanisore.utils.scheduling.BlockingRunner;
 import org.xbmc.nanisore.utils.scheduling.Canceller;
 import org.xbmc.nanisore.utils.scheduling.Continuation;
-import org.xbmc.nanisore.utils.scheduling.PeriodicRunner;
 import org.xbmc.nanisore.utils.scheduling.Producer;
 import org.xbmc.nanisore.utils.scheduling.Runner;
 import org.xbmc.nanisore.utils.scheduling.Task;
@@ -17,15 +14,12 @@ import java.util.Map;
 public class RcInteractor implements Rc.UseCases {
 
     private final Runner runner;
-    private final Runner repeater = new PeriodicRunner(
-            new BlockingRunner(),
-            UIUtils.initialButtonRepeatInterval,
-            UIUtils.buttonRepeatInterval
-    );
+    private final Runner repeater;
     private final Map<String, Canceller> running = new HashMap<>();
 
-    public RcInteractor(Runner runner) {
+    public RcInteractor(Runner runner, Runner repeater) {
         this.runner = runner;
+        this.repeater = repeater;
     }
 
     @Override
@@ -58,8 +52,7 @@ public class RcInteractor implements Rc.UseCases {
     }
 
     @Override
-    public void connectToEventServer(Maybe<?> then) {
-
+    public void connectToEventServer(Maybe<Void> then) {
     }
 
     @Override
@@ -74,6 +67,8 @@ public class RcInteractor implements Rc.UseCases {
             public Void apply() throws Throwable {
                 try {
                     action.run();
+                } catch (Rc.RpcError e) {
+                    console.tell(e.description);
                 } catch (Throwable e) {
                     e.printStackTrace();
                     Log.E.to(console, "RcInteractor action failed: %s", e);
@@ -84,7 +79,7 @@ public class RcInteractor implements Rc.UseCases {
     }
 
     @Override
-    public void fireAndFireAndFire(String name, final Runnable action) {
+    public void fireRepeatedly(String name, final Runnable action) {
         running.put(name, repeater.schedule(new Producer<Void>() {
             @Override
             public Void apply() {

@@ -8,9 +8,11 @@ public class RcPresenter implements Rc.Actions {
     private Rc.Ui view;
     private Rc.State state;
     private final Rc.UseCases will;
+    private final Rc.Rpc kodi;
 
-    public RcPresenter(Rc.UseCases will) {
+    public RcPresenter(Rc.UseCases will, Rc.Rpc kodi) {
         this.will = will;
+        this.kodi = kodi;
     }
 
     @Override
@@ -31,43 +33,95 @@ public class RcPresenter implements Rc.Actions {
     }
 
     @Override
-    public void didPress(Rc.Button button) {
+    public void didPress(final Rc.Button button) {
         Log.I.to(view, "pressed %s", button);
-        switch (button) {
-            case SELECT:
-                view.tell("count: " + state.activePlayerId);
-                break;
-            case BACK:
-                state.activePlayerId = 0;
-                break;
-        }
+        will.fireAndLogTo(view, new Runnable() {
+            @Override
+            public void run() {
+                switch (button) {
+                    case SELECT:
+                        kodi.trySelect();
+                        break;
+                    case BACK:
+                        kodi.tryBack();
+                        break;
+                    case INFO:
+                        kodi.tryInfo();
+                        break;
+                    case CONTEXT:
+                        kodi.tryContextMenu();
+                        break;
+                    case OSD:
+                        kodi.tryOsd();
+                        break;
+                    case HOME:
+                        kodi.tryHome();
+                        break;
+                    case MOVIES:
+                        kodi.tryMovies();
+                        break;
+                    case SHOWS:
+                        kodi.tryShows();
+                        break;
+                    case MUSIC:
+                        kodi.tryMusic();
+                        break;
+                    case PICTURES:
+                        kodi.tryPictures();
+                        break;
+                }
+            }
+        });
     }
 
     @Override
     public void didLongPress(Rc.Button button) {
         Log.I.to(view, "longpressed %s", button);
+        if (button == Rc.Button.INFO) {
+            will.fireAndLogTo(view, new Runnable() {
+                @Override
+                public void run() {
+                    kodi.tryCodecInfo();
+                }
+            });
+        }
     }
 
     @Override
     public void didStartHoldingDown(Rc.Button button) {
         Log.I.to(view, "hold %s", button);
+        will.stop();
         view.showPressed(button);
         switch (button) {
             case UP:
-                will.stop();
-                will.fireAndFireAndFire("vol-inc", new Runnable() {
+                will.fireRepeatedly("up", new Runnable() {
                     @Override
                     public void run() {
-                        state.activePlayerId++;
+                        kodi.tryUp(false);
                     }
                 });
                 break;
             case DOWN:
-                will.stop();
-                will.fireAndFireAndFire("vol-dec", new Runnable() {
+                will.fireRepeatedly("down", new Runnable() {
                     @Override
                     public void run() {
-                        state.activePlayerId--;
+                        kodi.tryDown(false);
+                    }
+                });
+                break;
+            case LEFT:
+                will.fireRepeatedly("left", new Runnable() {
+                    @Override
+                    public void run() {
+                        kodi.tryLeft(false);
+                    }
+                });
+                break;
+            case RIGHT:
+                will.fireRepeatedly("right", new Runnable() {
+                    @Override
+                    public void run() {
+                        kodi.tryRight(false);
                     }
                 });
                 break;
@@ -80,10 +134,16 @@ public class RcPresenter implements Rc.Actions {
         view.showNormal(button);
         switch (button) {
             case UP:
-                will.stop("vol-inc");
+                will.stop("up");
                 break;
             case DOWN:
-                will.stop("vol-dec");
+                will.stop("down");
+                break;
+            case LEFT:
+                will.stop("left");
+                break;
+            case RIGHT:
+                will.stop("right");
                 break;
         }
     }
