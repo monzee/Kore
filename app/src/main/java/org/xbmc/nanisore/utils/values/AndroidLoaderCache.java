@@ -16,12 +16,27 @@ public class AndroidLoaderCache implements Store {
             super(context);
             this.value = value;
         }
+
+        /**
+         * This is really just to play nicely with other LoaderManager clients.
+         *
+         * This is useless normally because our callback has no onLoadFinished
+         * implementation. But other callers of LoaderManager.initLoader might
+         * receive this instance (if they somehow guessed the id) so we should
+         * still deliver.
+         */
+        @Override
+        protected void onStartLoading() {
+            deliverResult(value);
+        }
     }
 
-    private class Put<T> implements LoaderManager.LoaderCallbacks<T> {
+    private static class Put<T> implements LoaderManager.LoaderCallbacks<T> {
+        private final Context context;
         private final T value;
 
-        Put(T value) {
+        Put(Context context, T value) {
+            this.context = context;
             this.value = value;
         }
 
@@ -37,11 +52,11 @@ public class AndroidLoaderCache implements Store {
         public void onLoaderReset(Loader<T> loader) {}
     }
 
-    private class Canary<T> extends Put<T> {
-        private boolean hasLoader = true;
+    private static class Canary<T> extends Put<T> {
+        boolean hasLoader = true;
 
-        Canary(T value) {
-            super(value);
+        Canary(Context context, T value) {
+            super(context, value);
         }
 
         @Override
@@ -71,18 +86,18 @@ public class AndroidLoaderCache implements Store {
     public <T> void put(String key, T value) {
         int id = id(key);
         manager.destroyLoader(id);
-        manager.initLoader(id, null, new Put<>(value));
+        manager.initLoader(id, null, new Put<>(context, value));
     }
 
     @Override
     public <T> void softPut(String key, T value) {
-        manager.initLoader(id(key), null, new Put<>(value));
+        manager.initLoader(id(key), null, new Put<>(context, value));
     }
 
     @Override
     public <T> T get(String key, T orElse) {
         int id = id(key);
-        Canary<T> canary = new Canary<>(orElse);
+        Canary<T> canary = new Canary<>(context, orElse);
         try {
             Holder<T> holder = (Holder<T>) manager.initLoader(id, null, canary);
             if (!canary.hasLoader) {
@@ -90,6 +105,7 @@ public class AndroidLoaderCache implements Store {
             }
             return holder.value;
         } catch (ClassCastException e) {
+            // id clash with an existing loader.
             return orElse;
         }
     }
@@ -98,7 +114,7 @@ public class AndroidLoaderCache implements Store {
     public <T> T hardGet(String key, T orElse) {
         try {
             return (
-                    (Holder<T>) manager.initLoader(id(key), null, new Put<>(orElse))
+                    (Holder<T>) manager.initLoader(id(key), null, new Put<>(context, orElse))
             ).value;
         } catch (ClassCastException e) {
             return orElse;

@@ -7,9 +7,9 @@ import org.xbmc.kore.jsonrpc.type.PlayerType;
 import org.xbmc.kore.jsonrpc.type.PlayerType.GetActivePlayersReturnType;
 import org.xbmc.nanisore.screens.Conventions;
 import org.xbmc.nanisore.utils.Log;
-import org.xbmc.nanisore.utils.MightFail;
 import org.xbmc.nanisore.utils.Options;
 import org.xbmc.nanisore.utils.values.Lazy;
+import org.xbmc.nanisore.utils.values.Try;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -17,17 +17,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class RemotePresenter implements Remote.Actions {
-
-    private class ReportError<T> extends MightFail<T> {
-        ReportError(T callback) {
-            super(callback);
-        }
-
-        @Override
-        public void fail(Throwable error) {
-            report(error);
-        }
-    }
 
     private class OnPlayerEvent implements HostConnectionObserver.PlayerEventsObserver {
         @Override
@@ -131,9 +120,9 @@ public class RemotePresenter implements Remote.Actions {
         if (this.view != null) {
             throw new RuntimeException("Unbind first before rebinding!");
         }
-        will.restore(new Conventions.OnRestore<Remote.State>() {
+        will.restore(new Conventions.Just<Remote.State>() {
             @Override
-            public void restored(Remote.State state) {
+            public void got(Remote.State state) {
                 if (!state.isHostPresent) {
                     view.goToHostAdder();
                     return;
@@ -182,19 +171,19 @@ public class RemotePresenter implements Remote.Actions {
             } else {
                 Log.I.to(view, "attempting to enqueue: %s", videoUri);
                 final String uriToAddon = videoUri;
-                will.maybeClearPlaylist(new ReportError<>(new Remote.OnMaybeClearPlaylist() {
+                will.maybeClearPlaylist(report(new Conventions.Just<Boolean>() {
                     @Override
-                    public void playlistMaybeCleared(boolean wasCleared) {
-                        Runnable fileEnqueued = new Runnable() {
+                    public void got(Boolean result) {
+                        Conventions.Just<Void> fileEnqueued = new Conventions.Just<Void>() {
                             @Override
-                            public void run() {
+                            public void got(Void ignored) {
                                 state.videoToShare = null;
                                 if (view != null) {
                                     view.refreshPlaylist();
                                 }
                             }
                         };
-                        will.enqueueFile(uriToAddon, wasCleared, new ReportError<>(fileEnqueued));
+                        will.enqueueFile(uriToAddon, result, report(fileEnqueued));
                     }
                 }));
             }
@@ -290,6 +279,19 @@ public class RemotePresenter implements Remote.Actions {
         }
     }
 
+    private <T> Conventions.Maybe<T> report(final Conventions.Just<T> handler) {
+        return new Conventions.Maybe<T>() {
+            @Override
+            public void got(Try<T> result) {
+                try {
+                    handler.got(result.get());
+                } catch (Throwable e) {
+                    report(e);
+                }
+            }
+        };
+    }
+
     private boolean isEnabled(Remote.Option opt) {
         String key = null;
         boolean def = false;
@@ -348,4 +350,5 @@ public class RemotePresenter implements Remote.Actions {
                 path.substring(1).split("/", 2)[0]
         );
     }
+
 }

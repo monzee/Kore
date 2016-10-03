@@ -16,9 +16,9 @@ public class RcPresenter implements Rc.Actions {
     @Override
     public void bind(Rc.Ui view) {
         this.view = view;
-        will.restore(new Conventions.OnRestore<Rc.State>() {
+        will.restore(new Conventions.Just<Rc.State>() {
             @Override
-            public void restored(Rc.State state) {
+            public void got(Rc.State state) {
                 RcPresenter.this.state = state;
             }
         });

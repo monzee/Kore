@@ -4,7 +4,6 @@ import org.xbmc.kore.jsonrpc.type.PlayerType;
 import org.xbmc.kore.jsonrpc.type.PlaylistType;
 import org.xbmc.nanisore.screens.Conventions;
 import org.xbmc.nanisore.utils.Console;
-import org.xbmc.nanisore.utils.MightFail;
 
 import java.util.List;
 
@@ -49,7 +48,7 @@ public interface Remote {
          * @param then Will receive a bool indicating whether the playlist was
          *             cleared or not.
          */
-        void maybeClearPlaylist(MightFail<? extends OnMaybeClearPlaylist> then);
+        void maybeClearPlaylist(Maybe<Boolean> then);
 
         /**
          * Called if the user intended to share a YouTube/Vimeo URL.
@@ -60,16 +59,8 @@ public interface Remote {
          * @param then Doesn't yield anything useful, so just run an action on
          *             success.
          */
-        void enqueueFile(
-                String videoUri,
-                boolean startPlaying,
-                MightFail<? extends Runnable> then
-        );
+        void enqueueFile(String videoUri, boolean startPlaying, Maybe<Void> then);
 
-    }
-
-    interface OnMaybeClearPlaylist {
-        void playlistMaybeCleared(boolean wasCleared);
     }
 
     class State {

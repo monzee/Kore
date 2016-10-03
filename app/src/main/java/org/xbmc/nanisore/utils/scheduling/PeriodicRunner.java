@@ -32,7 +32,7 @@ public class PeriodicRunner extends BaseRunner {
                         if (!cancelled) {
                             Thread.sleep(millis);
                         }
-                        synchronized (this) {
+                        synchronized (Repeater.this) {
                             if (!cancelled) {
                                 lastCanceller.cancel();
                                 lastCanceller = delegate.schedule(task, handler);
@@ -48,7 +48,12 @@ public class PeriodicRunner extends BaseRunner {
         }
 
         void start() {
-            lastCanceller = delegate.schedule(task, handler);
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    lastCanceller = delegate.schedule(task, handler);
+                }
+            });
         }
 
         @Override

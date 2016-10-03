@@ -1,5 +1,7 @@
 package org.xbmc.nanisore.screens;
 
+import org.xbmc.nanisore.utils.values.Try;
+
 /**
  * Common use cases.
  *
@@ -7,11 +9,11 @@ package org.xbmc.nanisore.screens;
  */
 public interface Conventions<T> {
 
-    // TODO: this could have a more generic name
-    // so the presenters wouldn't have to make up interfaces for each use case
-    interface OnRestore<T> {
-        void restored(T state);
+    interface Just<T> {
+        void got(T result);
     }
+
+    interface Maybe<T> extends Try.Handler<T> {}
 
     /**
      * Typically called during presenter unbind().
@@ -26,7 +28,7 @@ public interface Conventions<T> {
      * @param then Will receive the last instance saved or a fresh one on
      *             first run
      */
-    void restore(OnRestore<T> then);
+    void restore(Just<T> then);
 
     /**
      * Run action in the background and return immediately.

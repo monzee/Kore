@@ -3,7 +3,6 @@ package org.xbmc.nanisore.screens.rc;
 import org.xbmc.kore.utils.UIUtils;
 import org.xbmc.nanisore.utils.Console;
 import org.xbmc.nanisore.utils.Log;
-import org.xbmc.nanisore.utils.MightFail;
 import org.xbmc.nanisore.utils.scheduling.BlockingRunner;
 import org.xbmc.nanisore.utils.scheduling.Canceller;
 import org.xbmc.nanisore.utils.scheduling.Continuation;
@@ -35,13 +34,13 @@ public class RcInteractor implements Rc.UseCases {
     }
 
     @Override
-    public void restore(final OnRestore<Rc.State> then) {
+    public void restore(final Just<Rc.State> then) {
         runner.once(
                 Task.just("init-rc-fragment", new Rc.State()),
                 new Continuation<Rc.State>() {
                     @Override
                     public void accept(Rc.State result, Throwable error) {
-                        then.restored(result);
+                        then.got(result);
                     }
                 }
         );
@@ -59,12 +58,12 @@ public class RcInteractor implements Rc.UseCases {
     }
 
     @Override
-    public void connectToEventServer(MightFail<?> then) {
+    public void connectToEventServer(Maybe<?> then) {
 
     }
 
     @Override
-    public void changeSpeed(boolean faster, Rc.OnSpeedChange then) {
+    public void changeSpeed(boolean faster, Just<Integer> then) {
 
     }
 
@@ -106,8 +105,8 @@ public class RcInteractor implements Rc.UseCases {
 
     @Override
     public void stop() {
-        for (String key : running.keySet()) {
-            running.get(key).cancel();
+        for (Canceller c : running.values()) {
+            c.cancel();
         }
         running.clear();
     }

@@ -2,7 +2,6 @@ package org.xbmc.nanisore.screens.remote;
 
 import org.xbmc.kore.jsonrpc.type.PlayerType.GetActivePlayersReturnType;
 import org.xbmc.kore.jsonrpc.type.PlaylistType;
-import org.xbmc.nanisore.utils.MightFail;
 import org.xbmc.nanisore.utils.scheduling.Continuation;
 import org.xbmc.nanisore.utils.scheduling.Producer;
 import org.xbmc.nanisore.utils.scheduling.Runner;
@@ -51,22 +50,20 @@ public class RemoteInteractor implements Remote.UseCases {
     }
 
     @Override
-    public void restore(final OnRestore<Remote.State> then) {
+    public void restore(final Just<Remote.State> then) {
         runner.once(Task.just("init", initState), new Continuation<Remote.State>() {
             @Override
             public void accept(Remote.State result, Throwable error) {
-                then.restored(result);
+                then.got(result);
             }
         });
     }
 
     @Override
-    public void maybeClearPlaylist(
-            final MightFail<? extends Remote.OnMaybeClearPlaylist> then
-    ) {
+    public void maybeClearPlaylist(final Maybe<Boolean> then) {
         runner.schedule(Task.unit("playlist-cleared?", new Producer<Boolean>() {
             @Override
-            public Boolean apply() throws InterruptedException {
+            public Boolean apply() throws Throwable {
                 for (GetActivePlayersReturnType player : kodi.tryGetActivePlayers()) {
                     if (player.type.equals(GetActivePlayersReturnType.VIDEO)) {
                         return false;
@@ -75,27 +72,18 @@ public class RemoteInteractor implements Remote.UseCases {
                 kodi.tryClearVideoPlaylist();
                 return true;
             }
-        }), new Continuation<Boolean>() {
-            @Override
-            public void accept(Boolean result, Throwable error) {
-                if (error == null) {
-                    then.ok.playlistMaybeCleared(result);
-                } else {
-                    then.fail(error);
-                }
-            }
-        });
+        }), then);
     }
 
     @Override
     public void enqueueFile(
             final String videoUri,
             final boolean startPlaylist,
-            final MightFail<? extends Runnable> then
+            final Maybe<Void> then
     ) {
         runner.schedule(Task.unit("enqueue-" + videoUri, new Producer<Void>() {
             @Override
-            public Void apply() throws InterruptedException {
+            public Void apply() throws Throwable {
                 PlaylistType.Item item = new PlaylistType.Item();
                 item.file = videoUri;
                 kodi.tryAddToVideoPlaylist(item);
@@ -104,16 +92,7 @@ public class RemoteInteractor implements Remote.UseCases {
                 }
                 return null;
             }
-        }), new Continuation<Void>() {
-            @Override
-            public void accept(Void result, Throwable error) {
-                if (error == null) {
-                    then.ok.run();
-                } else {
-                    then.fail(error);
-                }
-            }
-        });
+        }), then);
     }
 
     @Override

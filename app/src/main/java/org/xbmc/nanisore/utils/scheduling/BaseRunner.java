@@ -74,7 +74,7 @@ public abstract class BaseRunner implements Runner {
                 } else {
                     either.right(result);
                 }
-                handler.then(either);
+                handler.got(either);
             }
         };
     }

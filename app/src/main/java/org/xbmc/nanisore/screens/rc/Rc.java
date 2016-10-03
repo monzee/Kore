@@ -2,7 +2,6 @@ package org.xbmc.nanisore.screens.rc;
 
 import org.xbmc.nanisore.screens.Conventions;
 import org.xbmc.nanisore.utils.Console;
-import org.xbmc.nanisore.utils.MightFail;
 
 /**
  * This is a refactoring of {@link org.xbmc.kore.ui.RemoteFragment}.
@@ -38,8 +37,8 @@ public interface Rc {
     }
 
     interface UseCases extends Conventions<State> {
-        void connectToEventServer(MightFail<?> then);
-        void changeSpeed(boolean faster, OnSpeedChange then);
+        void connectToEventServer(Maybe<?> then);
+        void changeSpeed(boolean faster, Just<Integer> then);
         void fireAndLogTo(Console console, Runnable action);
         void fireAndFireAndFire(String name, Runnable action);
         void stop(String name);
@@ -49,10 +48,6 @@ public interface Rc {
     class State {
         int activePlayerId;
         String nowPlayingItemType;
-    }
-
-    interface OnSpeedChange {
-        void speedChanged(int result);
     }
 
     /**
