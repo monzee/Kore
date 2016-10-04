@@ -1,7 +1,7 @@
 package org.xbmc.nanisore.utils.scheduling;
 
 import org.xbmc.nanisore.utils.values.Store;
-import org.xbmc.nanisore.utils.values.WeakStore;
+import org.xbmc.nanisore.utils.values.SoftStore;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,7 +51,7 @@ public class MemoRunner extends BaseRunner implements CachingRunner {
 
     @Override
     public Store toStore() {
-        Store store = new WeakStore();
+        Store store = new SoftStore();
         for (String key : cache.keySet()) {
             store.put(key, cache.get(key).result.value);
         }

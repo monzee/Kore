@@ -5,8 +5,7 @@ import org.xbmc.nanisore.utils.values.Store;
 public interface CachingRunner extends Runner {
 
     /**
-     * Puts the value in the cache if not currently present then calls
-     * a function with the cached value or the given default value.
+     * Puts the value in the cache if not currently present.
      */
     <T> void put(String key, T value);
 

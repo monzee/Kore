@@ -18,76 +18,6 @@ import java.util.regex.Pattern;
 
 public class RemotePresenter implements Remote.Actions {
 
-    private class OnPlayerEvent implements HostConnectionObserver.PlayerEventsObserver {
-        @Override
-        public void playerOnPlay(
-                GetActivePlayersReturnType getActivePlayerResult,
-                PlayerType.PropertyValue getPropertiesResult,
-                ListType.ItemsAll getItemResult
-        ) {
-            if (view == null) {
-                return;
-            }
-            String img = getItemResult.fanart;
-            if (img == null || img.trim().isEmpty()) {
-                img = getItemResult.thumbnail;
-            }
-            if (img != null && !img.trim().isEmpty() && !img.equals(state.imageUrl)) {
-                view.setBackgroundImage(img);
-                state.imageUrl = img;
-            }
-            if (!state.isObservingPlayer) {
-                view.startObservingPlayerStatus();
-                state.isObservingPlayer = true;
-            }
-        }
-
-        @Override
-        public void playerOnPause(
-                GetActivePlayersReturnType getActivePlayerResult,
-                PlayerType.PropertyValue getPropertiesResult,
-                ListType.ItemsAll getItemResult
-        ) {
-            playerOnPlay(getActivePlayerResult, getPropertiesResult, getItemResult);
-        }
-
-        @Override
-        public void playerOnStop() {
-            if (state.imageUrl != null && view != null) {
-                view.setBackgroundImage(null);
-                state.imageUrl = null;
-            }
-        }
-
-        @Override
-        public void playerOnConnectionError(int errorCode, String description) {
-            playerOnStop();
-        }
-
-        @Override
-        public void playerNoResultsYet() {
-            // noop
-        }
-
-        @Override
-        public void systemOnQuit() {
-            report(Remote.Message.IS_QUITTING);
-            playerOnStop();
-        }
-
-        @Override
-        public void inputOnInputRequested(String title, String type, String value) {
-            if (view != null) {
-                view.promptTextToSend(title);
-            }
-        }
-
-        @Override
-        public void observerOnStopObserving() {
-            // noop
-        }
-    }
-
     private final Lazy<Boolean> useVolumeKeys = new Lazy<Boolean>() {
         @Override
         protected Boolean value() {
@@ -100,19 +30,15 @@ public class RemotePresenter implements Remote.Actions {
     private final Options options;
     private final Remote.UseCases will;
     private final Remote.Rpc kodi;
-    private final HostConnectionObserver hostEvents;
-    private final HostConnectionObserver.PlayerEventsObserver onPlayerEvent = new OnPlayerEvent();
 
     public RemotePresenter(
             Remote.UseCases will,
             Remote.Rpc kodi,
-            Options options,
-            HostConnectionObserver hostEvents
+            Options options
     ) {
         this.will = will;
         this.kodi = kodi;
         this.options = options;
-        this.hostEvents = hostEvents;
     }
 
     @Override
@@ -129,7 +55,6 @@ public class RemotePresenter implements Remote.Actions {
                 }
                 RemotePresenter.this.view = view;
                 RemotePresenter.this.state = state;
-                hostEvents.registerPlayerObserver(onPlayerEvent, true);
                 view.initNavigationDrawer();
                 view.initTabs(state.fresh);
                 view.initActionBar();
@@ -154,7 +79,6 @@ public class RemotePresenter implements Remote.Actions {
         view = null;
         kodi.dispose();
         if (state != null) {
-            hostEvents.unregisterPlayerObserver(onPlayerEvent);
             will.save(state);
         }
     }
@@ -255,6 +179,34 @@ public class RemotePresenter implements Remote.Actions {
     @Override
     public void didSendText(String text, boolean done) {
         kodi.sendText(text, done);
+    }
+
+    @Override
+    public void playerDidPlayOrPause(ListType.ItemsAll item) {
+        if (view == null) {
+            return;
+        }
+        String img = item.fanart;
+        if (img == null || img.trim().isEmpty()) {
+            img = item.thumbnail;
+        }
+        if (img != null && !img.trim().isEmpty() && !img.equals(state.imageUrl)) {
+            img = kodi.tryGetImageUrl(img);
+            view.setBackgroundImage(img);
+            state.imageUrl = img;
+        }
+        if (!state.isObservingPlayer) {
+            view.startObservingPlayerStatus();
+            state.isObservingPlayer = true;
+        }
+    }
+
+    @Override
+    public void playerDidStop() {
+        if (state.imageUrl != null && view != null) {
+            view.setBackgroundImage(null);
+            state.imageUrl = null;
+        }
     }
 
     private void report(Remote.Message msg, Object... fmtArgs) {

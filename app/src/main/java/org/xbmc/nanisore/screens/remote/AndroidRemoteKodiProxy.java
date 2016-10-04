@@ -91,6 +91,11 @@ public class AndroidRemoteKodiProxy implements Remote.Rpc {
     }
 
     @Override
+    public String tryGetImageUrl(String image) {
+        return hostInfo.getImageUrl(image);
+    }
+
+    @Override
     public void increaseVolume() {
         execAsync(new Application.SetVolume(GlobalType.IncrementDecrement.INCREMENT));
     }

@@ -12,11 +12,16 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 import org.xbmc.kore.R;
+import org.xbmc.kore.host.HostConnectionObserver;
 import org.xbmc.kore.host.HostInfo;
 import org.xbmc.kore.host.HostManager;
+import org.xbmc.kore.jsonrpc.type.ListType;
+import org.xbmc.kore.jsonrpc.type.PlayerType;
 import org.xbmc.kore.ui.BaseActivity;
 import org.xbmc.kore.ui.NowPlayingFragment.NowPlayingListener;
 import org.xbmc.kore.ui.SendTextDialogFragment.SendTextDialogListener;
+import org.xbmc.nanisore.kodi.AndroidKodiEvents;
+import org.xbmc.nanisore.kodi.KodiEventBus;
 import org.xbmc.nanisore.screens.AndroidOptions;
 import org.xbmc.nanisore.screens.remote.AndroidRemoteKodiProxy;
 import org.xbmc.nanisore.screens.remote.AndroidRemoteView;
@@ -26,10 +31,12 @@ import org.xbmc.nanisore.screens.remote.RemotePresenter;
 import org.xbmc.nanisore.utils.scheduling.AndroidLoaderRunner;
 
 public class RemoteActivity extends BaseActivity
-        implements SendTextDialogListener, NowPlayingListener
+        implements SendTextDialogListener, NowPlayingListener,
+        HostConnectionObserver.PlayerEventsObserver
 {
     private Remote.Actions user;
     private Remote.Ui view;
+    private KodiEventBus.Canceller canceller;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,8 +55,7 @@ public class RemoteActivity extends BaseActivity
                         .withVideoToShare(sharedVideo())
                         .build(),
                 rpc,
-                new AndroidOptions(PreferenceManager.getDefaultSharedPreferences(context)),
-                hostManager.getHostConnectionObserver()
+                new AndroidOptions(PreferenceManager.getDefaultSharedPreferences(context))
         );
         view = new AndroidRemoteView(this, hostManager.getPicasso());
     }
@@ -58,12 +64,15 @@ public class RemoteActivity extends BaseActivity
     protected void onStart() {
         super.onStart();
         user.bind(view);
+        canceller = new AndroidKodiEvents(getApplicationContext()).observePlayer(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         user.unbind();
+        canceller.cancel();
+        canceller = null;
     }
 
     @Override
@@ -104,6 +113,8 @@ public class RemoteActivity extends BaseActivity
         }
     }
 
+    // send text dialog events
+
     @Override
     public void onSendTextFinished(String text, boolean done) {
         int n = text.length();
@@ -114,9 +125,9 @@ public class RemoteActivity extends BaseActivity
     }
 
     @Override
-    public void onSendTextCancel() {
-        // noop
-    }
+    public void onSendTextCancel() {}
+
+    // now playing fragment events
 
     @Override
     public void SwitchToRemotePanel() {
@@ -127,6 +138,53 @@ public class RemoteActivity extends BaseActivity
     public void onShuffleClicked() {
         view.refreshPlaylist();
     }
+
+    // player events
+
+    @Override
+    public void playerOnPlay(
+            PlayerType.GetActivePlayersReturnType getActivePlayerResult,
+            PlayerType.PropertyValue getPropertiesResult,
+            ListType.ItemsAll getItemResult
+    ) {
+        user.playerDidPlayOrPause(getItemResult);
+    }
+
+    @Override
+    public void playerOnPause(
+            PlayerType.GetActivePlayersReturnType getActivePlayerResult,
+            PlayerType.PropertyValue getPropertiesResult,
+            ListType.ItemsAll getItemResult
+    ) {
+        user.playerDidPlayOrPause(getItemResult);
+    }
+
+    @Override
+    public void playerOnStop() {
+        user.playerDidStop();
+    }
+
+    @Override
+    public void playerOnConnectionError(int errorCode, String description) {
+        user.playerDidStop();
+    }
+
+    @Override
+    public void playerNoResultsYet() {}
+
+    @Override
+    public void systemOnQuit() {
+        view.tell(Remote.Message.IS_QUITTING);
+        user.playerDidStop();
+    }
+
+    @Override
+    public void inputOnInputRequested(String title, String type, String value) {
+        view.promptTextToSend(title);
+    }
+
+    @Override
+    public void observerOnStopObserving() {}
 
     private String sharedVideo() {
         Intent i = getIntent();

@@ -179,7 +179,11 @@ public class AndroidLoaderRunner extends BaseRunner implements CachingRunner {
      *
      * The IDs of the future values stored by the Store are prefixed with
      * {@code "loader-cache:"}. The IDs stored by this runner is the same
-     * as the name of the task that produced the value.
+     * as the name of the task that produced the value. It is not currently
+     * possible to get the values cached by this runner from the Store emitted
+     * here because the id generation strategy is not parameterized. However,
+     * this runner can get future values stored by the Store through
+     * {@code take("loader-cache:" + id, ..., ...)}.
      */
     @Override
     public Store toStore() {

@@ -88,64 +88,36 @@ public class RcPresenter implements Rc.Actions {
     }
 
     @Override
-    public void didStartHoldingDown(Rc.Button button) {
+    public void didStartHoldingDown(final Rc.Button button) {
         Log.I.to(view, "hold %s", button);
         will.stop();
         view.showPressed(button);
-        switch (button) {
-            case UP:
-                will.fireRepeatedly("up", new Runnable() {
-                    @Override
-                    public void run() {
+        will.fireRepeatedly(button.toString(), new Runnable() {
+            @Override
+            public void run() {
+                switch (button) {
+                    case UP:
                         kodi.tryUp(false);
-                    }
-                });
-                break;
-            case DOWN:
-                will.fireRepeatedly("down", new Runnable() {
-                    @Override
-                    public void run() {
+                        break;
+                    case DOWN:
                         kodi.tryDown(false);
-                    }
-                });
-                break;
-            case LEFT:
-                will.fireRepeatedly("left", new Runnable() {
-                    @Override
-                    public void run() {
+                        break;
+                    case LEFT:
                         kodi.tryLeft(false);
-                    }
-                });
-                break;
-            case RIGHT:
-                will.fireRepeatedly("right", new Runnable() {
-                    @Override
-                    public void run() {
+                        break;
+                    case RIGHT:
                         kodi.tryRight(false);
-                    }
-                });
-                break;
-        }
+                        break;
+                }
+            }
+        });
     }
 
     @Override
     public void didStopHoldingDown(Rc.Button button) {
         Log.I.to(view, "release %s", button);
         view.showNormal(button);
-        switch (button) {
-            case UP:
-                will.stop("up");
-                break;
-            case DOWN:
-                will.stop("down");
-                break;
-            case LEFT:
-                will.stop("left");
-                break;
-            case RIGHT:
-                will.stop("right");
-                break;
-        }
+        will.stop(button.toString());
     }
 
 }

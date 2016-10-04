@@ -41,7 +41,7 @@ public class RcInteractor implements Rc.UseCases {
     public void fireAndForget(final Runnable action) {
         cache.once(new Producer<Void>() {
             @Override
-            public Void apply() throws Throwable {
+            public Void apply() {
                 action.run();
                 return null;
             }
@@ -61,7 +61,7 @@ public class RcInteractor implements Rc.UseCases {
     public void fireAndLogTo(final Console console, final Runnable action) {
         cache.once(new Producer<Void>() {
             @Override
-            public Void apply() throws Throwable {
+            public Void apply() {
                 try {
                     action.run();
                 } catch (Rc.RpcError e) {

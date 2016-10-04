@@ -1,5 +1,6 @@
 package org.xbmc.nanisore.screens.remote;
 
+import org.xbmc.kore.jsonrpc.type.ListType;
 import org.xbmc.kore.jsonrpc.type.PlayerType;
 import org.xbmc.kore.jsonrpc.type.PlaylistType;
 import org.xbmc.nanisore.screens.Conventions;
@@ -35,6 +36,8 @@ public interface Remote {
         void didPressVolumeDown();
         void didChoose(Menu action);
         void didSendText(String text, boolean done);
+        void playerDidPlayOrPause(ListType.ItemsAll item);
+        void playerDidStop();
     }
 
     interface UseCases extends Conventions<State> {
@@ -85,6 +88,7 @@ public interface Remote {
         void tryAddToVideoPlaylist(PlaylistType.Item item);
         void tryOpenVideoPlaylist();
         void tryWakeUp();
+        String tryGetImageUrl(String image);
         void increaseVolume();
         void decreaseVolume();
         void sendText(String text, boolean done);

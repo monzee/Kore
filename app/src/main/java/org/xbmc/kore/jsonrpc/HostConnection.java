@@ -41,7 +41,6 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.InetSocketAddress;
-import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.Proxy;
 import java.net.Socket;
@@ -420,17 +419,8 @@ public class HostConnection {
      */
     private <T> void executeThroughOkHttp(final ApiMethod<T> method, final ApiCallback<T> callback,
                                           final Handler handler) {
-        OkHttpClient client = getOkHttpClient();
-        String jsonRequest = method.toJsonString();
-
         try {
-            Request request = new Request.Builder()
-                    .url(hostInfo.getJsonRpcHttpEndpoint())
-                    .post(RequestBody.create(MEDIA_TYPE_JSON, jsonRequest))
-                    .build();
-            LogUtils.LOGD(TAG, "Sending request via OkHttp: " + jsonRequest);
-            Response response = sendOkHttpRequest(client, request);
-            final T result = method.resultFromJson(parseJsonResponse(handleOkHttpResponse(response)));
+            final T result = execSync(method, getOkHttpClient());
 
             if ((handler != null) && (callback != null)) {
                 handler.post(new Runnable() {
@@ -451,6 +441,17 @@ public class HostConnection {
                 });
             }
         }
+    }
+
+    public <T> T execSync(ApiMethod<T> method, OkHttpClient client) throws ApiException {
+        String jsonRequest = method.toJsonString();
+        Request request = new Request.Builder()
+                .url(hostInfo.getJsonRpcHttpEndpoint())
+                .post(RequestBody.create(MEDIA_TYPE_JSON, jsonRequest))
+                .build();
+        LogUtils.LOGD(TAG, "Sending request via OkHttp: " + jsonRequest);
+        Response response = sendOkHttpRequest(client, request);
+        return method.resultFromJson(parseJsonResponse(handleOkHttpResponse(response)));
     }
 
     /**
