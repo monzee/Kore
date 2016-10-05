@@ -1,6 +1,6 @@
 package org.xbmc.nanisore.utils.scheduling;
 
-import org.xbmc.nanisore.utils.values.Try;
+import org.xbmc.nanisore.utils.values.Do;
 
 /**
  * Interface for running tasks and handling the (possibly erroneous) result
@@ -19,7 +19,7 @@ public interface Runner {
      */
     <T> Canceller schedule(Producer<T> task, Continuation<T> handler);
 
-    <T> Canceller schedule(Producer<T> task, Try.Handler<T> handler);
+    <T> Canceller schedule(Producer<T> task, Do.Maybe<T> handler);
 
     /**
      * Fire-and-forget
@@ -39,7 +39,7 @@ public interface Runner {
      */
     <T> void once(Producer<T> task, Continuation<T> handler);
 
-    <T> void once(Producer<T> task, Try.Handler<T> handler);
+    <T> void once(Producer<T> task, Do.Maybe<T> handler);
 
     /**
      * Fire-forget-then-destroy

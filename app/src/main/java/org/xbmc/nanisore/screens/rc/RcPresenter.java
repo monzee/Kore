@@ -1,7 +1,7 @@
 package org.xbmc.nanisore.screens.rc;
 
-import org.xbmc.nanisore.screens.Conventions;
 import org.xbmc.nanisore.utils.Log;
+import org.xbmc.nanisore.utils.values.Do;
 
 public class RcPresenter implements Rc.Actions {
 
@@ -18,7 +18,7 @@ public class RcPresenter implements Rc.Actions {
     @Override
     public void bind(Rc.Ui view) {
         this.view = view;
-        will.restore(new Conventions.Just<Rc.State>() {
+        will.restore(new Do.Just<Rc.State>() {
             @Override
             public void got(Rc.State state) {
                 RcPresenter.this.state = state;

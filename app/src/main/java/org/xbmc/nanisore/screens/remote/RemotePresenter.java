@@ -1,15 +1,11 @@
 package org.xbmc.nanisore.screens.remote;
 
 import org.xbmc.kore.Settings;
-import org.xbmc.kore.host.HostConnectionObserver;
 import org.xbmc.kore.jsonrpc.type.ListType;
-import org.xbmc.kore.jsonrpc.type.PlayerType;
-import org.xbmc.kore.jsonrpc.type.PlayerType.GetActivePlayersReturnType;
-import org.xbmc.nanisore.screens.Conventions;
 import org.xbmc.nanisore.utils.Log;
 import org.xbmc.nanisore.utils.Options;
+import org.xbmc.nanisore.utils.values.Do;
 import org.xbmc.nanisore.utils.values.Lazy;
-import org.xbmc.nanisore.utils.values.Try;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -46,7 +42,7 @@ public class RemotePresenter implements Remote.Actions {
         if (this.view != null) {
             throw new RuntimeException("Unbind first before rebinding!");
         }
-        will.restore(new Conventions.Just<Remote.State>() {
+        will.restore(new Do.Just<Remote.State>() {
             @Override
             public void got(Remote.State state) {
                 if (!state.isHostPresent) {
@@ -95,20 +91,25 @@ public class RemotePresenter implements Remote.Actions {
             } else {
                 Log.I.to(view, "attempting to enqueue: %s", videoUri);
                 final String uriToAddon = videoUri;
-                will.maybeClearPlaylist(report(new Conventions.Just<Boolean>() {
+                Do.Seq.start(new Do.Init<Boolean>() {
                     @Override
-                    public void got(Boolean result) {
-                        will.enqueueFile(uriToAddon, result, report(new Conventions.Just<Void>() {
-                            @Override
-                            public void got(Void ignored) {
-                                state.videoToShare = null;
-                                if (view != null) {
-                                    view.refreshPlaylist();
-                                }
-                            }
-                        }));
+                    public void start(Do.Just<Boolean> next) {
+                        will.maybeClearPlaylist(report(next));
                     }
-                }));
+                }).andThen(new Do.Step<Boolean, Void>() {
+                    @Override
+                    public void then(Boolean result, Do.Just<Void> next) {
+                        will.enqueueFile(uriToAddon, result, report(next));
+                    }
+                }).execute(new Do.Just<Void>() {
+                    @Override
+                    public void got(Void result) {
+                        state.videoToShare = null;
+                        if (view != null) {
+                            view.refreshPlaylist();
+                        }
+                    }
+                });
             }
         } catch (MalformedURLException e) {
             Log.E.to(view, "failed to parse video url: %s", uriString);
@@ -230,10 +231,10 @@ public class RemotePresenter implements Remote.Actions {
         }
     }
 
-    private <T> Conventions.Maybe<T> report(final Conventions.Just<T> handler) {
-        return new Conventions.Maybe<T>() {
+    private <T> Do.Maybe<T> report(final Do.Just<T> handler) {
+        return new Do.Maybe<T>() {
             @Override
-            public void got(Try<T> result) {
+            public void got(Do.Try<T> result) {
                 try {
                     handler.got(result.get());
                 } catch (Throwable e) {

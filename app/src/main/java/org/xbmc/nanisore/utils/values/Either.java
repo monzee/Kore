@@ -1,6 +1,6 @@
 package org.xbmc.nanisore.utils.values;
 
-public class Either<L extends Throwable, R> implements Try<R> {
+public class Either<L extends Throwable, R> implements Do.Try<R> {
     private boolean done;
     private final Object lock = new Object();
     private L left;

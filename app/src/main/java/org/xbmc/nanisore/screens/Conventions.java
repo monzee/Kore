@@ -1,19 +1,13 @@
 package org.xbmc.nanisore.screens;
 
-import org.xbmc.nanisore.utils.values.Try;
+import org.xbmc.nanisore.utils.values.Do;
 
 /**
  * Common use cases.
  *
  * @param <T> The type of the object being saved/restored on config change.
  */
-public interface Conventions<T> {
-
-    interface Just<T> {
-        void got(T result);
-    }
-
-    interface Maybe<T> extends Try.Handler<T> {}
+public interface Conventions<T> extends Do {
 
     /**
      * Typically called during presenter unbind().
