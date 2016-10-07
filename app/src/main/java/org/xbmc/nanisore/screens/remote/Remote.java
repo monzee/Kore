@@ -5,7 +5,9 @@ import org.xbmc.kore.jsonrpc.type.PlayerType;
 import org.xbmc.kore.jsonrpc.type.PlaylistType;
 import org.xbmc.nanisore.screens.Conventions;
 import org.xbmc.nanisore.utils.Console;
+import org.xbmc.nanisore.utils.values.Do;
 
+import java.net.MalformedURLException;
 import java.util.List;
 
 public interface Remote {
@@ -31,7 +33,7 @@ public interface Remote {
     interface Actions {
         void bind(Ui view);
         void unbind();
-        void didShareVideo(String uriString);
+        void didShareVideo(String urlString);
         void didPressVolumeUp();
         void didPressVolumeDown();
         void didChoose(Menu action);
@@ -43,6 +45,14 @@ public interface Remote {
     interface UseCases extends Conventions<State> {
 
         /**
+         * Converts a YouTube or Vimeo url to a plugin:// url that can be sent
+         * to Kodi.
+         *
+         * @throws MalformedURLException when the string is not a valid url
+         */
+        String transformUrlToKodiPluginUrl(String videoUrl) throws MalformedURLException;
+
+        /**
          * Called before enqueuing a shared video URL.
          *
          * The playlist should not be cleared if there's a video being played
@@ -51,7 +61,7 @@ public interface Remote {
          * @param then Will receive a bool indicating whether the playlist was
          *             cleared or not.
          */
-        void maybeClearPlaylist(Maybe<Boolean> then);
+        void maybeClearPlaylist(Do.Maybe<Boolean> then);
 
         /**
          * Called if the user intended to share a YouTube/Vimeo URL.
@@ -62,7 +72,7 @@ public interface Remote {
          * @param then Doesn't yield anything useful, so just run an action on
          *             success.
          */
-        void enqueueFile(String videoUri, boolean startPlaying, Maybe<Void> then);
+        void enqueueFile(String videoUri, boolean startPlaying, Do.Maybe<Void> then);
 
     }
 

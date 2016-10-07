@@ -7,6 +7,7 @@ import org.xbmc.nanisore.utils.scheduling.Canceller;
 import org.xbmc.nanisore.utils.scheduling.Continuation;
 import org.xbmc.nanisore.utils.scheduling.Producer;
 import org.xbmc.nanisore.utils.scheduling.Runner;
+import org.xbmc.nanisore.utils.values.Do;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +29,7 @@ public class RcInteractor implements Rc.UseCases {
     }
 
     @Override
-    public void restore(final Just<Rc.State> then) {
+    public void restore(final Do.Just<Rc.State> then) {
         cache.take("init-rc-fragment", new Rc.State(), new Continuation<Rc.State>() {
             @Override
             public void accept(Rc.State result, Throwable error) {
@@ -49,11 +50,11 @@ public class RcInteractor implements Rc.UseCases {
     }
 
     @Override
-    public void connectToEventServer(Maybe<Void> then) {
+    public void connectToEventServer(Do.Maybe<Void> then) {
     }
 
     @Override
-    public void changeSpeed(boolean faster, Just<Integer> then) {
+    public void changeSpeed(boolean faster, Do.Just<Integer> then) {
 
     }
 

@@ -8,9 +8,7 @@ import org.xbmc.nanisore.utils.values.Do;
 import org.xbmc.nanisore.utils.values.Lazy;
 
 import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class RemotePresenter implements Remote.Actions {
 
@@ -80,41 +78,39 @@ public class RemotePresenter implements Remote.Actions {
     }
 
     @Override
-    public void didShareVideo(String uriString) {
-        try {
-            URL url = new URL(uriString);
-            String videoUri = parseYouTubeId(url);
-            videoUri = videoUri != null ? videoUri : parseVimeoId(url);
-            if (videoUri == null) {
-                Log.I.to(view, "can't recognize share: %s", uriString);
-                report(Remote.Message.CANNOT_SHARE_VIDEO);
-            } else {
-                Log.I.to(view, "attempting to enqueue: %s", videoUri);
-                final String uriToAddon = videoUri;
-                Do.Seq.start(new Do.Init<Boolean>() {
-                    @Override
-                    public void start(Do.Just<Boolean> next) {
+    public void didShareVideo(final String urlString) {
+        final AtomicReference<String> pluginUrl = new AtomicReference<>();
+        Do.Seq.start(new Do.Executable<Boolean>() {
+            @Override
+            public void execute(final Do.Just<Boolean> next) {
+                try {
+                    String transformed = will.transformUrlToKodiPluginUrl(urlString);
+                    if (transformed != null) {
+                        pluginUrl.set(transformed);
                         will.maybeClearPlaylist(report(next));
+                    } else {
+                        Log.I.to(view, "cannot recognize share: %s", urlString);
+                        report(Remote.Message.CANNOT_SHARE_VIDEO);
                     }
-                }).andThen(new Do.Step<Boolean, Void>() {
-                    @Override
-                    public void then(Boolean result, Do.Just<Void> next) {
-                        will.enqueueFile(uriToAddon, result, report(next));
-                    }
-                }).execute(new Do.Just<Void>() {
-                    @Override
-                    public void got(Void result) {
-                        state.videoToShare = null;
-                        if (view != null) {
-                            view.refreshPlaylist();
-                        }
-                    }
-                });
+                } catch (MalformedURLException e) {
+                    Log.E.to(view, "failed to parse video url: %s", urlString);
+                    report(Remote.Message.CANNOT_SHARE_VIDEO);
+                }
             }
-        } catch (MalformedURLException e) {
-            Log.E.to(view, "failed to parse video url: %s", uriString);
-            report(Remote.Message.CANNOT_SHARE_VIDEO);
-        }
+        }).andThen(new Do.Step<Boolean, Void>() {
+            @Override
+            public void then(Boolean result, Do.Just<Void> next) {
+                will.enqueueFile(pluginUrl.get(), result, report(next));
+            }
+        }).execute(new Do.Just<Void>() {
+            @Override
+            public void got(Void result) {
+                state.videoToShare = null;
+                if (view != null) {
+                    view.refreshPlaylist();
+                }
+            }
+        });
     }
 
     @Override
@@ -218,9 +214,9 @@ public class RemotePresenter implements Remote.Actions {
 
     private void report(Throwable error) {
         if (view != null) {
-            Remote.RpcError e = error instanceof Remote.RpcError ?
-                    (Remote.RpcError) error :
-                    new Remote.RpcError(
+            Remote.RpcError e = error instanceof Remote.RpcError
+                    ? (Remote.RpcError) error
+                    : new Remote.RpcError(
                             Remote.Message.GENERAL_ERROR,
                             0,
                             error.getLocalizedMessage()
@@ -262,45 +258,6 @@ public class RemotePresenter implements Remote.Actions {
                 break;
         }
         return options.get(key, def);
-    }
-
-    private String parseVimeoId(URL url) {
-        String host = url.getHost();
-        if (host == null || !host.endsWith("vimeo.com")) {
-            return null;
-        }
-        return pluginUriFromPath(url.getPath(), "vimeo");
-    }
-
-    private String parseYouTubeId(URL url) {
-        String host = url.getHost();
-        if (host == null || !(host.endsWith("youtube.com") || host.endsWith("youtu.be"))) {
-            return null;
-        }
-        String path = url.getPath();
-        if (host.endsWith("youtube.com")) {
-            String query = url.getQuery();
-            if (query == null) {
-                return null;
-            }
-            Matcher getVideoId = Pattern.compile("(?:^|&)v=([^&]+)").matcher(query);
-            if (!getVideoId.find()) {
-                return null;
-            }
-            path = "/" + getVideoId.group(1);
-        }
-        return pluginUriFromPath(path, "youtube");
-    }
-
-    private String pluginUriFromPath(String path, String pluginName) {
-        if (path == null || path.length() < 1) {
-            return null;
-        }
-        return String.format(
-                "plugin://plugin.video.%s/play/?video_id=%s",
-                pluginName,
-                path.substring(1).split("/", 2)[0]
-        );
     }
 
 }

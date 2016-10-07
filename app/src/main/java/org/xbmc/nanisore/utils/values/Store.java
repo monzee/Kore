@@ -20,4 +20,6 @@ public interface Store {
      * Gets a value if present, otherwise puts this value and returns it.
      */
     <T> T hardGet(String key, T orElse);
+
+    // TODO: consider having a take(String, T) -> T method
 }

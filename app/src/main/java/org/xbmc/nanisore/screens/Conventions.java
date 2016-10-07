@@ -7,7 +7,7 @@ import org.xbmc.nanisore.utils.values.Do;
  *
  * @param <T> The type of the object being saved/restored on config change.
  */
-public interface Conventions<T> extends Do {
+public interface Conventions<T> {
 
     /**
      * Typically called during presenter unbind().
@@ -22,7 +22,7 @@ public interface Conventions<T> extends Do {
      * @param then Will receive the last instance saved or a fresh one on
      *             first run
      */
-    void restore(Just<T> then);
+    void restore(Do.Just<T> then);
 
     /**
      * Run action in the background and return immediately.

@@ -2,6 +2,7 @@ package org.xbmc.nanisore.screens.rc;
 
 import org.xbmc.nanisore.screens.Conventions;
 import org.xbmc.nanisore.utils.Console;
+import org.xbmc.nanisore.utils.values.Do;
 
 /**
  * This is a refactoring of {@link org.xbmc.kore.ui.RemoteFragment}.
@@ -37,8 +38,8 @@ public interface Rc {
     }
 
     interface UseCases extends Conventions<State> {
-        void connectToEventServer(Maybe<Void> then);
-        void changeSpeed(boolean faster, Just<Integer> then);
+        void connectToEventServer(Do.Maybe<Void> then);
+        void changeSpeed(boolean faster, Do.Just<Integer> then);
         void fireAndLogTo(Console console, Runnable action);
         void fireRepeatedly(String name, Runnable action);
         void stop(String name);
