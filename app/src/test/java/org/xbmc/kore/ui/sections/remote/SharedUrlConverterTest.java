@@ -34,7 +34,6 @@ public class SharedUrlConverterTest {
 
     @Test
     public void youtube_short_url_with_garbage() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
                 .urlFrom(GARBAGE_BEFORE + "https://youtu.be/" + YT_ID));
         assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
                 .urlFrom("https://youtu.be/" + YT_ID + GARBAGE_AFTER));
