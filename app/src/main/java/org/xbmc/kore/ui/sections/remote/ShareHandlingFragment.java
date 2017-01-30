@@ -261,6 +261,34 @@ public class ShareHandlingFragment extends Fragment {
         };
     }
 
+    private Task<String> hostNotify(final Handler handler, final String message) {
+        return new Task<String>() {
+            @Override
+            public void start(@NonNull final OnFinish<? super String> then) {
+                connection.execute(
+                        new Player.Notification(getString(R.string.app_name), message),
+                        new ApiCallback<String>() {
+                            @Override
+                            public void onSuccess(String result) {
+                                then.got(result);
+                            }
+
+                            @Override
+                            public void onError(int errorCode, String description) {
+                                // okhttp will barf here because of the 0-length response.
+                                // there's literally no response, the server just drops the stream.
+                                if (errorCode == ApiException.IO_EXCEPTION_WHILE_SENDING_REQUEST) {
+                                    then.got("");
+                                } else {
+                                    say(R.string.error_message, description);
+                                }
+                            }
+                        },
+                        handler);
+            }
+        };
+    }
+
     private Task<String> play(final Handler handler) {
         return new Task<String>() {
             @Override
