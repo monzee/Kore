@@ -57,11 +57,11 @@ public class ShareHandlingFragment extends Fragment {
     private static final String YOUTUBE_PREFIX = "plugin://plugin.video.youtube/play/?video_id=";
     private static final String YOUTUBE_SHORT_URL = "(?i)://youtu\\.be/([^\\?\\s/]+)";
     private static final String YOUTUBE_LONG_URL = "(?i)://(?:www\\.|m\\.)?youtube\\.com/watch\\S*[\\?&]v=([^&\\s]+)";
-    private static final String TWITCH_PREFIX = "plugin://plugin.video.twitch/playLive/";
-    private static final String TWITCH_URL = "(?i)://www\\.twitch\\.tv/([^\\?\\s/]+)";
+    private static final String TWITCH_PREFIX = "plugin://plugin.video.twitch/playLive/%s/";
+    private static final String TWITCH_URL = "(?i)://(?:www\\.)?twitch\\.tv/([^\\?\\s/]+)";
     private static final String VIMEO_PREFIX = "plugin://plugin.video.vimeo/play/?video_id=";
     private static final String VIMEO_URL = "(?i)://(?:www\\.|player\\.)?vimeo\\.com[^\\?\\s]*?/(\\d+)";
-    private static final String SVTPLAY_PREFIX = "plugin://plugin.video.svtplay/?url=";
+    private static final String SVTPLAY_PREFIX = "plugin://plugin.video.svtplay/?url=%s&mode=video";
     private static final String SVTPLAY_URL = "(?i)://(?:www\\.)?svtplay\\.se(/video/\\d+/.*)";
 
     /**
@@ -91,11 +91,11 @@ public class ShareHandlingFragment extends Fragment {
         // captured through EXTRA_TEXT param
         m = Pattern.compile(TWITCH_URL).matcher(data);
         if (m.find()) {
-            return TWITCH_PREFIX + m.group(1) + "/";
+            return String.format(TWITCH_PREFIX, m.group(1));
         }
         m = Pattern.compile(SVTPLAY_URL).matcher(data);
         if (m.find()) {
-            return SVTPLAY_PREFIX + Uri.encode(m.group(1)) + "&mode=video";
+            return String.format(SVTPLAY_PREFIX, Uri.encode(m.group(1)));
         }
         return null;
     }
@@ -133,14 +133,15 @@ public class ShareHandlingFragment extends Fragment {
     @Override
     public void onStart() {
         super.onStart();
-        if (handled || connection == null) {
+        Intent intent = getActivity().getIntent();
+        String action = intent.getAction();
+        if (handled || connection == null || action == null) {
             return;
         }
         handled = true;
 
-        Intent intent = getActivity().getIntent();
         String pluginUrl;
-        switch (intent.getAction()) {
+        switch (action) {
             case Intent.ACTION_SEND:
                 pluginUrl = urlFrom(intent.getStringExtra(Intent.EXTRA_TEXT));
                 break;
@@ -249,34 +250,6 @@ public class ShareHandlingFragment extends Fragment {
                                 // okhttp will barf here because of the 0-length response.
                                 // there's literally no response, the server just drops the socket.
                                 // is there a way to tell okhttp that this is expected?
-                                if (errorCode == ApiException.IO_EXCEPTION_WHILE_SENDING_REQUEST) {
-                                    then.got("");
-                                } else {
-                                    say(R.string.error_message, description);
-                                }
-                            }
-                        },
-                        handler);
-            }
-        };
-    }
-
-    private Task<String> hostNotify(final Handler handler, final String message) {
-        return new Task<String>() {
-            @Override
-            public void start(@NonNull final OnFinish<? super String> then) {
-                connection.execute(
-                        new Player.Notification(getString(R.string.app_name), message),
-                        new ApiCallback<String>() {
-                            @Override
-                            public void onSuccess(String result) {
-                                then.got(result);
-                            }
-
-                            @Override
-                            public void onError(int errorCode, String description) {
-                                // okhttp will barf here because of the 0-length response.
-                                // there's literally no response, the server just drops the stream.
                                 if (errorCode == ApiException.IO_EXCEPTION_WHILE_SENDING_REQUEST) {
                                     then.got("");
                                 } else {
