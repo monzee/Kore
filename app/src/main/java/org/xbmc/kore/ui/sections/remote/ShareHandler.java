@@ -2,14 +2,10 @@ package org.xbmc.kore.ui.sections.remote;
 
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.StringRes;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.widget.Toast;
 
 import org.xbmc.kore.R;
 import org.xbmc.kore.jsonrpc.ApiCallback;
@@ -25,35 +21,30 @@ import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Headless fragment that sends shared URLs to Kodi plugins.
- */
-public class ShareHandlingFragment extends Fragment {
+import de.greenrobot.event.EventBus;
 
-    /**
-     * Static factory method.
-     *
-     * Creates and attaches a new instance or returns a previously added one.
-     * This should be called early in whatever activity that declares the
-     * intent filters. Sibling fragments can then safely call this and rest
-     * assured that they are getting the same instance.
-     *
-     * @param fm **support** fragment manager.
-     * @return the fragment instance. The host activity should immediately
-     * follow this with a call to {@link #connect(HostConnection)}.
-     */
-    @NonNull
-    public static ShareHandlingFragment of(FragmentManager fm) {
-        Fragment fragment = fm.findFragmentByTag(TAG);
-        if (fragment == null) {
-            fragment = new ShareHandlingFragment();
-            fm.beginTransaction().add(fragment, TAG).commit();
-        }
-        return (ShareHandlingFragment) fragment;
+/**
+ * Stand-alone class that sends shared URLs to Kodi plugins.
+ */
+public class ShareHandler {
+
+    public static final String TAG = ShareHandler.class.getCanonicalName();
+    public static final String KEY_HANDLED = TAG + ":share-handled";
+
+    public interface Strings {
+        /**
+         * @param id of string resource
+         * @param fmtArgs arguments to sprintf if any
+         * @return a translated string
+         */
+        String get(@StringRes int id, Object... fmtArgs);
+
+        /**
+         * @param message to show in a toast
+         */
+        void toast(String message);
     }
 
-    private static final String TAG = ShareHandlingFragment.class.getCanonicalName();
-    private static final String KEY_HANDLED = TAG + ":share-handled";
     private static final String YOUTUBE_PREFIX = "plugin://plugin.video.youtube/play/?video_id=";
     private static final String YOUTUBE_SHORT_URL = "(?i)://youtu\\.be/([^\\?\\s/]+)";
     private static final String YOUTUBE_LONG_URL = "(?i)://(?:www\\.|m\\.)?youtube\\.com/watch\\S*[\\?&]v=([^&\\s]+)";
@@ -100,45 +91,35 @@ public class ShareHandlingFragment extends Fragment {
         return null;
     }
 
-    private boolean handled;
-    private HostConnection connection;
-    private String playlistTag;
+    private final HostConnection connection;
+    private final Strings strings;
+    private final EventBus bus;
 
     /**
-     * @param connection Share won't be handled when null.
+     * @param connection Connection to Kodi
+     * @param bus An instance of EventBus; probably EventBus.getDefault()
+     * @param strings Hook into the calling activity for translated strings
+     *                and toasts
      */
-    public void connect(HostConnection connection) {
+    public ShareHandler(HostConnection connection, EventBus bus, Strings strings) {
         this.connection = connection;
+        this.strings = strings;
+        this.bus = bus;
     }
 
     /**
-     * The sibling PlaylistFragment should call this when visible so that
-     * it can be refreshed when the plugin url is added.
+     * Tries to find known URLs in the intent and sends it to Kodi.
      *
-     * @param tag The playlist fragment's tag. Use {@link Fragment#getTag()},
-     *            don't rely on FragmentPagerAdapter's implementation details.
+     * @param intent that started the activity
+     * @return true when it was able to try matching the known url patterns
+     * regardless of success; false when there is no connection or action so
+     * you might want to try again.
      */
-    public void setPlaylistTag(@Nullable String tag) {
-        playlistTag = tag;
-    }
-
-    @Override
-    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        if (savedInstanceState != null) {
-            handled = savedInstanceState.getBoolean(KEY_HANDLED, false);
-        }
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        Intent intent = getActivity().getIntent();
+    public boolean handle(Intent intent) {
         String action = intent.getAction();
-        if (handled || connection == null || action == null) {
-            return;
+        if (connection == null || action == null) {
+            return false;
         }
-        handled = true;
 
         String pluginUrl;
         switch (action) {
@@ -149,37 +130,30 @@ public class ShareHandlingFragment extends Fragment {
                 pluginUrl = urlFrom(intent.getDataString());
                 break;
             default:
-                return;
+                return true;
         }
 
         if (pluginUrl == null) {
             say(R.string.error_share_video);
-            return;
+            return true;
         }
 
         final Handler handler = new Handler();
         final String file = pluginUrl;
-        isPlayingVideo(handler).start(new Task.OnFinish<Boolean>() {
+        new Task.Sequence<>(isPlayingVideo(handler), new Task.Bind<Boolean, String>() {
             @Override
-            public void got(Boolean isPlaying) {
+            public Task<String> from(Boolean isPlaying) {
                 if (isPlaying) {
-                    new Task.Sequence<>(enqueue(handler, file))
-                            .then(hostNotify(handler, getString(R.string.shared_video_added)))
-                            .start(refreshPlaylist());
+                    return Task.Sequence.of(enqueue(handler, file))
+                            .then(hostNotify(handler, strings.get(R.string.shared_video_added)));
                 } else {
-                    new Task.Sequence<>(clearPlaylist(handler))
+                    return Task.Sequence.of(clearPlaylist(handler))
                             .then(enqueue(handler, file))
-                            .then(play(handler))
-                            .start(refreshPlaylist());
+                            .then(play(handler));
                 }
             }
-        });
-    }
-
-    @Override
-    public void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putBoolean(KEY_HANDLED, handled);
+        }).start(refreshPlaylist());
+        return true;
     }
 
     private Task<Boolean> isPlayingVideo(final Handler handler) {
@@ -236,7 +210,7 @@ public class ShareHandlingFragment extends Fragment {
             @Override
             public void start(@NonNull final OnFinish<? super String> then) {
                 connection.execute(
-                        new Player.Notification(getString(R.string.app_name), message),
+                        new Player.Notification(strings.get(R.string.app_name), message),
                         new ApiCallback<String>() {
                             @Override
                             public void onSuccess(String result) {
@@ -293,19 +267,13 @@ public class ShareHandlingFragment extends Fragment {
         return new Task.OnFinish<Object>() {
             @Override
             public void got(Object unused) {
-                if (playlistTag != null) {
-                    ((PlaylistFragment) getFragmentManager()
-                            .findFragmentByTag(playlistTag))
-                            .forceRefreshPlaylist();
-                }
+                bus.post(Event.REFRESH_PLAYLIST);
             }
         };
     }
 
     private void say(@StringRes int message, Object... fmtArgs) {
-        if (isAdded()) {
-            Toast.makeText(getContext(), getString(message, fmtArgs), Toast.LENGTH_SHORT).show();
-        }
+        strings.toast(strings.get(message, fmtArgs));
     }
 
 }

@@ -18,6 +18,7 @@ package org.xbmc.kore.ui.sections.remote;
 import android.content.Intent;
 import android.graphics.Point;
 import android.os.Bundle;
+import android.support.annotation.StringRes;
 import android.support.v4.text.TextDirectionHeuristicsCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v4.widget.DrawerLayout;
@@ -56,15 +57,9 @@ import org.xbmc.kore.utils.LogUtils;
 import org.xbmc.kore.utils.TabsAdapter;
 import org.xbmc.kore.utils.UIUtils;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import butterknife.ButterKnife;
 import butterknife.InjectView;
+import de.greenrobot.event.EventBus;
 
 
 public class RemoteActivity extends BaseActivity
@@ -72,7 +67,6 @@ public class RemoteActivity extends BaseActivity
         NowPlayingFragment.NowPlayingListener,
         SendTextDialogFragment.SendTextDialogListener {
 	private static final String TAG = LogUtils.makeLogTag(RemoteActivity.class);
-
 
     private static final int NOWPLAYING_FRAGMENT_ID = 1;
     private static final int REMOTE_FRAGMENT_ID = 2;
@@ -94,6 +88,8 @@ public class RemoteActivity extends BaseActivity
     @InjectView(R.id.pager_indicator) CirclePageIndicator pageIndicator;
     @InjectView(R.id.pager) ViewPager viewPager;
     @InjectView(R.id.default_toolbar) Toolbar toolbar;
+
+    private boolean shareHandled;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -148,8 +144,32 @@ public class RemoteActivity extends BaseActivity
 //        // Only set top and right, to allow bottom to overlap in each fragment
 //        UIUtils.setPaddingForSystemBars(this, viewPager, true, true, false);
 //        UIUtils.setPaddingForSystemBars(this, pageIndicator, true, true, false);
-        ShareHandlingFragment.of(getSupportFragmentManager())
-                .connect(hostManager.getConnection());
+
+        if (savedInstanceState != null) {
+            shareHandled = savedInstanceState.getBoolean(ShareHandler.KEY_HANDLED, false);
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (!shareHandled) {
+            shareHandled = new ShareHandler(
+                    hostManager.getConnection(),
+                    EventBus.getDefault(),
+                    new ShareHandler.Strings() {
+                        @Override
+                        public String get(@StringRes int id, Object... fmtArgs) {
+                            return getString(id, fmtArgs);
+                        }
+
+                        @Override
+                        public void toast(String message) {
+                            Toast.makeText(RemoteActivity.this, message, Toast.LENGTH_SHORT)
+                                    .show();
+                        }
+                    }).handle(getIntent());
+        }
     }
 
     @Override
@@ -188,6 +208,12 @@ public class RemoteActivity extends BaseActivity
         super.onPause();
         if (hostConnectionObserver != null) hostConnectionObserver.unregisterPlayerObserver(this);
         hostConnectionObserver = null;
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(ShareHandler.KEY_HANDLED, shareHandled);
     }
 
     /**

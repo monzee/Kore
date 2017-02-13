@@ -58,6 +58,7 @@ import java.util.List;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
+import de.greenrobot.event.EventBus;
 
 /**
  * Playlist view
@@ -143,14 +144,26 @@ public class PlaylistFragment extends Fragment
     public void onResume() {
         super.onResume();
         hostConnectionObserver.registerPlayerObserver(this, true);
-        ShareHandlingFragment.of(getFragmentManager()).setPlaylistTag(getTag());
+        EventBus.getDefault().register(this);
+    }
+
+    @SuppressWarnings("unused")
+    public void onEvent(Event e) {
+        switch (e) {
+            case REFRESH_PLAYLIST:
+                forceRefreshPlaylist();
+                break;
+            case TEST:
+                LogUtils.LOGD("mz", "in playlist fragment.");
+                break;
+        }
     }
 
     @Override
     public void onPause() {
         super.onPause();
         hostConnectionObserver.unregisterPlayerObserver(this);
-        ShareHandlingFragment.of(getFragmentManager()).setPlaylistTag(null);
+        EventBus.getDefault().unregister(this);
     }
 
     @Override

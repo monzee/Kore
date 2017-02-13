@@ -30,79 +30,79 @@ public class SharedUrlConverterTest {
 
     @Test
     public void twitch_actual_shared_text() {
-        assertEquals(twitchUrl(TWITCH_ID), ShareHandlingFragment
+        assertEquals(twitchUrl(TWITCH_ID), ShareHandler
                 .urlFrom("Watch blabla with me on Twitch! http://www.twitch.tv/" + TWITCH_ID + "?sr=a"));
     }
     @Test
     public void youtube_short_url() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom("https://youtu.be/" + YT_ID));
     }
 
     @Test
     public void youtube_short_url_with_garbage() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom(GARBAGE_BEFORE + "https://youtu.be/" + YT_ID));
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom("https://youtu.be/" + YT_ID + GARBAGE_AFTER));
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom(GARBAGE_BEFORE + "https://youtu.be/" + YT_ID + GARBAGE_AFTER));
     }
 
     @Test
     public void youtube_short_with_query() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom("https://youtu.be/" + YT_ID + "?foo=bar&baz=1&quux"));
     }
 
     @Test
     public void youtube_long_url() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom("https://www.youtube.com/watch?v=" + YT_ID));
     }
 
     @Test
     public void youtube_long_no_www() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom("https://youtube.com/watch?v=" + YT_ID));
     }
 
     @Test
     public void youtube_long_with_garbage() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom(GARBAGE_BEFORE + "https://www.youtube.com/watch?v=" + YT_ID));
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom("https://www.youtube.com/watch?v=" + YT_ID + GARBAGE_AFTER));
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom(GARBAGE_BEFORE + "https://www.youtube.com/watch?v=" + YT_ID + GARBAGE_AFTER));
     }
 
     @Test
     public void youtube_long_extra_query_vars_before() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom("https://www.youtube.com/watch?foo=bar&baz=1&quux&v=" + YT_ID));
     }
 
     @Test
     public void youtube_long_extra_query_vars_after() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom("https://www.youtube.com/watch?v=" + YT_ID + "&foo=bar&baz=1&quux"));
     }
     @Test
     public void youtube_long_extra_query_vars_sandwiched() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom("https://www.youtube.com/watch?foo=bar&v=" + YT_ID + "&baz=1&quux"));
     }
 
     @Test
     public void youtube_long_slash_before_query_part() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom("https://www.youtube.com/watch/?v=" + YT_ID));
     }
 
     @Test
     public void youtube_short_slash_before_query_part() {
-        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandlingFragment
+        assertEquals(YT_PLUGIN_PREFIX + YT_ID, ShareHandler
                 .urlFrom("https://youtu.be/" + YT_ID + "/?foo=bar"));
     }
 
@@ -113,24 +113,24 @@ public class SharedUrlConverterTest {
                 "https://wwe.youtube.com/watch/?v=" + YT_ID,
                 "https://youtube.com/?v=" + YT_ID,
         }) {
-            assertNull(ShareHandlingFragment.urlFrom(s));
+            assertNull(ShareHandler.urlFrom(s));
         }
     }
 
     @Test
     public void vimeo_url() {
         String expected = VM_PLUGIN_PREFIX + VM_ID;
-        assertEquals(expected, ShareHandlingFragment
+        assertEquals(expected, ShareHandler
                 .urlFrom("http://www.vimeo.com/" + VM_ID));
-        assertEquals(expected, ShareHandlingFragment
+        assertEquals(expected, ShareHandler
                 .urlFrom("http://player.vimeo.com/" + VM_ID));
-        assertEquals(expected, ShareHandlingFragment
+        assertEquals(expected, ShareHandler
                 .urlFrom("http://vimeo.com/" + VM_ID));
-        assertEquals(expected, ShareHandlingFragment
+        assertEquals(expected, ShareHandler
                 .urlFrom("https://www.vimeo.com/" + VM_ID));
-        assertEquals(expected, ShareHandlingFragment
+        assertEquals(expected, ShareHandler
                 .urlFrom("https://player.vimeo.com/" + VM_ID));
-        assertEquals(expected, ShareHandlingFragment
+        assertEquals(expected, ShareHandler
                 .urlFrom("https://vimeo.com/" + VM_ID));
     }
 
@@ -141,18 +141,18 @@ public class SharedUrlConverterTest {
         // urls are good. for now i'll just keep it like this because this is
         // how it works before the refactor.
         String expected = VM_PLUGIN_PREFIX + VM_ID;
-        assertEquals(expected, ShareHandlingFragment
+        assertEquals(expected, ShareHandler
                 .urlFrom("http://vimeo.com/" + VM_ID + "/a/b/c/987654321"));
-        assertEquals(expected, ShareHandlingFragment
+        assertEquals(expected, ShareHandler
                 .urlFrom("http://vimeo.com/a/b/" + VM_ID + "/c/987654321"));
-        assertEquals(expected, ShareHandlingFragment
+        assertEquals(expected, ShareHandler
                 .urlFrom("http://vimeo.com/a/b/c/" + VM_ID));
-        assertNull(ShareHandlingFragment.urlFrom("http://vimeo.com/a/b/c?path=/" + VM_ID));
+        assertNull(ShareHandler.urlFrom("http://vimeo.com/a/b/c?path=/" + VM_ID));
     }
 
     private static void weAreElectric() {
         try {
-            ShareHandlingFragment.urlFrom("http://svtplay.se/video/0/");
+            ShareHandler.urlFrom("http://svtplay.se/video/0/");
         } catch (Throwable e) {
             assumeNoException(e);
         }
@@ -162,22 +162,22 @@ public class SharedUrlConverterTest {
     public void svtplay_url_format() throws UnsupportedEncodingException {
         weAreElectric();
         String path = "/1234567890/lorem/1psum?dolor=sit&amet#foo-bar-baz";
-        assertEquals(svtplayPluginUrl(path), ShareHandlingFragment
+        assertEquals(svtplayPluginUrl(path), ShareHandler
                 .urlFrom("http://www.svtplay.se/video" + path));
-        assertEquals(svtplayPluginUrl(path), ShareHandlingFragment
+        assertEquals(svtplayPluginUrl(path), ShareHandler
                 .urlFrom("https://www.svtplay.se/video" + path));
     }
 
     @Test
     public void svtplay_path_should_have_a_trailing_slash() {
         // this might be too strict; the plugin can recognize this just fine.
-        assertNull(ShareHandlingFragment.urlFrom("http://www.svtplay.se/video/12345"));
+        assertNull(ShareHandler.urlFrom("http://www.svtplay.se/video/12345"));
     }
 
     @Test
     public void svtplay_path_should_start_with_a_numeric_segment() {
         for (String path : new String[] {"/a1/", "/1a/", "//1/", "/a/1/"}) {
-            assertNull(ShareHandlingFragment.urlFrom("http://www.svtplay.se/video" + path));
+            assertNull(ShareHandler.urlFrom("http://www.svtplay.se/video" + path));
         }
     }
 
@@ -198,7 +198,7 @@ public class SharedUrlConverterTest {
                 "hTTPs://PLayeR.vimeO.coM/" + VM_ID,
                 "hTtp://SVTPlay.Se/video/12345/",
         }) {
-            assertNotNull(ShareHandlingFragment.urlFrom(url));
+            assertNotNull(ShareHandler.urlFrom(url));
         }
     }
 }
