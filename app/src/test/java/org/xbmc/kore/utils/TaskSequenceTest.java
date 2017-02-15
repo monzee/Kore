@@ -155,7 +155,8 @@ public class TaskSequenceTest {
     @Test
     public void monadic_bind() {
         final AtomicBoolean done = new AtomicBoolean(false);
-        new Task.Sequence<>(Task.Just.some(5), plus(1))
+        Task.Sequence.of(Task.Just.some(5))
+                .then(plus(1))
                 .then(square())
                 .then(triple())
                 .then(show("result: "))

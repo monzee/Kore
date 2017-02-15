@@ -3,7 +3,6 @@ package org.xbmc.kore.ui.sections.remote;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Handler;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.StringRes;
 
@@ -15,7 +14,7 @@ import org.xbmc.kore.jsonrpc.method.Player;
 import org.xbmc.kore.jsonrpc.method.Playlist;
 import org.xbmc.kore.jsonrpc.type.PlayerType.GetActivePlayersReturnType;
 import org.xbmc.kore.jsonrpc.type.PlaylistType;
-import org.xbmc.kore.utils.Task;
+import org.xbmc.kore.utils.Either;
 
 import java.util.ArrayList;
 import java.util.regex.Matcher;
@@ -54,6 +53,16 @@ public class ShareHandler {
     private static final String VIMEO_URL = "(?i)://(?:www\\.|player\\.)?vimeo\\.com[^\\?\\s]*?/(\\d+)";
     private static final String SVTPLAY_PREFIX = "plugin://plugin.video.svtplay/?url=%s&mode=video";
     private static final String SVTPLAY_URL = "(?i)://(?:www\\.)?svtplay\\.se(/video/\\d+/.*)";
+
+    private static class Error {
+        final @StringRes int message;
+        final String description;
+
+        Error(@StringRes int message, String description) {
+            this.message = message;
+            this.description = description;
+        }
+    }
 
     /**
      * Tries to match a bunch of URL patterns and converts the first match into
@@ -140,38 +149,53 @@ public class ShareHandler {
 
         final Handler handler = new Handler();
         final String file = pluginUrl;
-        new Task.Sequence<>(isPlayingVideo(handler), new Task.Bind<Boolean, String>() {
+        Either.Monad.of(isPlayingVideo(handler)).then(new Either.Bind<Error, Boolean, String>() {
             @Override
-            public Task<String> from(Boolean isPlaying) {
+            public Either<Error, String> from(Boolean isPlaying) {
                 if (isPlaying) {
-                    return Task.Sequence.of(enqueue(handler, file))
-                            .then(hostNotify(handler, strings.get(R.string.shared_video_added)));
+                    return Either.Monad.of(enqueue(handler, file))
+                            .then(hostNotify(handler, strings.get(R.string.item_added_to_playlist)));
                 } else {
-                    return Task.Sequence.of(clearPlaylist(handler))
+                    return Either.Monad.of(clearPlaylist(handler))
                             .then(enqueue(handler, file))
                             .then(play(handler));
                 }
             }
-        }).start(refreshPlaylist());
+        }).match(new Either.Pattern<Error, String>() {
+            @Override
+            public void ok(String ignored) {
+                bus.post(Event.REFRESH_PLAYLIST);
+            }
+
+            @Override
+            public void fail(Error e) {
+                say(e.message, e.description);
+            }
+        });
         return true;
     }
 
-    private Task<Boolean> isPlayingVideo(final Handler handler) {
-        return new Task<Boolean>() {
+    private Either<Error, Boolean> isPlayingVideo(final Handler handler) {
+        return new Either<Error, Boolean>() {
             @Override
-            public void start(@NonNull final OnFinish<? super Boolean> then) {
+            public void match(final Pattern<? super Error, ? super Boolean> matcher) {
                 connection.execute(
                         new Player.GetActivePlayers(),
-                        callOrSay(new OnFinish<ArrayList<GetActivePlayersReturnType>>() {
+                        matchOrSay(new Pattern<Error, ArrayList<GetActivePlayersReturnType>>() {
                             @Override
-                            public void got(ArrayList<GetActivePlayersReturnType> result) {
-                                for (GetActivePlayersReturnType player : result) {
+                            public void ok(ArrayList<GetActivePlayersReturnType> players) {
+                                for (GetActivePlayersReturnType player : players) {
                                     if (player.type.equals(GetActivePlayersReturnType.VIDEO)) {
-                                        then.got(true);
+                                        matcher.ok(true);
                                         return;
                                     }
                                 }
-                                then.got(false);
+                                matcher.ok(false);
+                            }
+
+                            @Override
+                            public void fail(Error error) {
+                                matcher.fail(error);
                             }
                         }, R.string.error_get_active_player),
                         handler);
@@ -179,36 +203,36 @@ public class ShareHandler {
         };
     }
 
-    private Task<String> clearPlaylist(final Handler handler) {
-        return new Task<String>() {
+    private Either<Error, String> clearPlaylist(final Handler handler) {
+        return new Either<Error, String>() {
             @Override
-            public void start(@NonNull OnFinish<? super String> then) {
+            public void match(final Pattern<? super Error, ? super String> matcher) {
                 connection.execute(
                         new Playlist.Clear(PlaylistType.VIDEO_PLAYLISTID),
-                        callOrSay(then, R.string.error_queue_media_file),
+                        matchOrSay(matcher, R.string.error_queue_media_file),
                         handler);
             }
         };
     }
 
-    private Task<String> enqueue(final Handler handler, String file) {
+    private Either<Error, String> enqueue(final Handler handler, String file) {
         final PlaylistType.Item item = new PlaylistType.Item();
         item.file = file;
-        return new Task<String>() {
+        return new Either<Error, String>() {
             @Override
-            public void start(@NonNull OnFinish<? super String> then) {
+            public void match(final Pattern<? super Error, ? super String> matcher) {
                 connection.execute(
                         new Playlist.Add(PlaylistType.VIDEO_PLAYLISTID, item),
-                        callOrSay(then, R.string.error_queue_media_file),
+                        matchOrSay(matcher, R.string.error_queue_media_file),
                         handler);
             }
         };
     }
 
-    private Task<String> hostNotify(final Handler handler, final String message) {
-        return new Task<String>() {
+    private Either<Error, String> hostNotify(final Handler handler, final String message) {
+        return new Either<Error, String>() {
             @Override
-            public void start(@NonNull final OnFinish<? super String> then) {
+            public void match(final Pattern<? super Error, ? super String> matcher) {
                 connection.execute(
                         new Player.Notification(strings.get(R.string.app_name), message),
                         new ApiCallback<String>() {
@@ -216,7 +240,7 @@ public class ShareHandler {
                             public void onSuccess(String result) {
                                 // this will never be hit, but call it anyway. it might be fixed in
                                 // the future, who knows.
-                                then.got(result);
+                                matcher.ok(result);
                             }
 
                             @Override
@@ -225,9 +249,9 @@ public class ShareHandler {
                                 // there's literally no response, the server just drops the socket.
                                 // is there a way to tell okhttp that this is expected?
                                 if (errorCode == ApiException.IO_EXCEPTION_WHILE_SENDING_REQUEST) {
-                                    then.got("");
+                                    matcher.ok("");
                                 } else {
-                                    say(R.string.error_message, description);
+                                    matcher.fail(new Error(R.string.error_message, description));
                                 }
                             }
                         },
@@ -236,38 +260,29 @@ public class ShareHandler {
         };
     }
 
-    private Task<String> play(final Handler handler) {
-        return new Task<String>() {
+    private Either<Error, String> play(final Handler handler) {
+        return new Either<Error, String>() {
             @Override
-            public void start(@NonNull OnFinish<? super String> then) {
+            public void match(final Pattern<? super Error, ? super String> matcher) {
                 connection.execute(
                         new Player.Open(Player.Open.TYPE_PLAYLIST, PlaylistType.VIDEO_PLAYLISTID),
-                        callOrSay(then, R.string.error_play_media_file),
+                        matchOrSay(matcher, R.string.error_play_media_file),
                         handler);
             }
         };
     }
 
     private <T> ApiCallback<T>
-    callOrSay(final Task.OnFinish<? super T> then, @StringRes final int error) {
+    matchOrSay(final Either.Pattern<? super Error, ? super T> matcher, final @StringRes int message) {
         return new ApiCallback<T>() {
             @Override
             public void onSuccess(T result) {
-                then.got(result);
+                matcher.ok(result);
             }
 
             @Override
             public void onError(int errorCode, String description) {
-                say(error, description);
-            }
-        };
-    }
-
-    private Task.OnFinish<Object> refreshPlaylist() {
-        return new Task.OnFinish<Object>() {
-            @Override
-            public void got(Object unused) {
-                bus.post(Event.REFRESH_PLAYLIST);
+                matcher.fail(new Error(message, description));
             }
         };
     }
