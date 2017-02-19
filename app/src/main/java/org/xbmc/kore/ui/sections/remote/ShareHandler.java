@@ -8,13 +8,14 @@ import android.support.annotation.StringRes;
 
 import org.xbmc.kore.R;
 import org.xbmc.kore.jsonrpc.ApiCallback;
-import org.xbmc.kore.jsonrpc.ApiException;
 import org.xbmc.kore.jsonrpc.HostConnection;
 import org.xbmc.kore.jsonrpc.method.Player;
 import org.xbmc.kore.jsonrpc.method.Playlist;
 import org.xbmc.kore.jsonrpc.type.PlayerType.GetActivePlayersReturnType;
 import org.xbmc.kore.jsonrpc.type.PlaylistType;
 import org.xbmc.kore.utils.Either;
+import org.xbmc.kore.utils.Result;
+import org.xbmc.kore.utils.Transform;
 
 import java.util.ArrayList;
 import java.util.regex.Matcher;
@@ -39,9 +40,9 @@ public class ShareHandler {
         String get(@StringRes int id, Object... fmtArgs);
 
         /**
-         * @param message to show in a toast
+         * @param message to show the user
          */
-        void toast(String message);
+        void say(String message);
     }
 
     private static final String YOUTUBE_PREFIX = "plugin://plugin.video.youtube/play/?video_id=";
@@ -120,9 +121,9 @@ public class ShareHandler {
      * Tries to find known URLs in the intent and sends it to Kodi.
      *
      * @param intent that started the activity
-     * @return true when it was able to try matching the known url patterns
-     * regardless of success; false when there is no connection or action so
-     * you might want to try again.
+     * @return true when an attempt was made to find recognized urls; false when
+     * there is no connection so you might want to try again later. True doesn't
+     * mean it found a match or sent the URL to Kodi successfully.
      */
     public boolean handle(Intent intent) {
         String action = intent.getAction();
@@ -143,13 +144,13 @@ public class ShareHandler {
         }
 
         if (pluginUrl == null) {
-            say(R.string.error_share_video);
+            strings.say(strings.get(R.string.error_share_video));
             return true;
         }
 
         final Handler handler = new Handler();
         final String file = pluginUrl;
-        Either.Monad.of(isPlayingVideo(handler)).then(new Either.Bind<Error, Boolean, String>() {
+        Result.of(isPlayingVideo(handler)).then(new Either.Bind<Error, Boolean, String>() {
             @Override
             public Either<Error, String> from(Boolean isPlaying) {
                 if (isPlaying) {
@@ -161,6 +162,11 @@ public class ShareHandler {
                             .then(play(handler));
                 }
             }
+        }).recover(new Transform<Either.Monad<Error, String>, Either<Error, String>>() {
+            @Override
+            public Either<Error, String> from(Either.Monad<Error, String> result) {
+                return okHttpHatesNotifications(result);
+            }
         }).match(new Either.Pattern<Error, String>() {
             @Override
             public void ok(String ignored) {
@@ -169,7 +175,7 @@ public class ShareHandler {
 
             @Override
             public void fail(Error e) {
-                say(e.message, e.description);
+                strings.say(strings.get(e.message, e.description));
             }
         });
         return true;
@@ -181,7 +187,7 @@ public class ShareHandler {
             public void match(final Pattern<? super Error, ? super Boolean> matcher) {
                 connection.execute(
                         new Player.GetActivePlayers(),
-                        matchOrSay(new Pattern<Error, ArrayList<GetActivePlayersReturnType>>() {
+                        passOrSay(new Pattern<Error, ArrayList<GetActivePlayersReturnType>>() {
                             @Override
                             public void ok(ArrayList<GetActivePlayersReturnType> players) {
                                 for (GetActivePlayersReturnType player : players) {
@@ -209,7 +215,7 @@ public class ShareHandler {
             public void match(final Pattern<? super Error, ? super String> matcher) {
                 connection.execute(
                         new Playlist.Clear(PlaylistType.VIDEO_PLAYLISTID),
-                        matchOrSay(matcher, R.string.error_queue_media_file),
+                        passOrSay(matcher, R.string.error_queue_media_file),
                         handler);
             }
         };
@@ -223,7 +229,7 @@ public class ShareHandler {
             public void match(final Pattern<? super Error, ? super String> matcher) {
                 connection.execute(
                         new Playlist.Add(PlaylistType.VIDEO_PLAYLISTID, item),
-                        matchOrSay(matcher, R.string.error_queue_media_file),
+                        passOrSay(matcher, R.string.error_queue_media_file),
                         handler);
             }
         };
@@ -235,26 +241,7 @@ public class ShareHandler {
             public void match(final Pattern<? super Error, ? super String> matcher) {
                 connection.execute(
                         new Player.Notification(strings.get(R.string.app_name), message),
-                        new ApiCallback<String>() {
-                            @Override
-                            public void onSuccess(String result) {
-                                // this will never be hit, but call it anyway. it might be fixed in
-                                // the future, who knows.
-                                matcher.ok(result);
-                            }
-
-                            @Override
-                            public void onError(int errorCode, String description) {
-                                // okhttp will barf here because of the 0-length response.
-                                // there's literally no response, the server just drops the socket.
-                                // is there a way to tell okhttp that this is expected?
-                                if (errorCode == ApiException.IO_EXCEPTION_WHILE_SENDING_REQUEST) {
-                                    matcher.ok("");
-                                } else {
-                                    matcher.fail(new Error(R.string.error_message, description));
-                                }
-                            }
-                        },
+                        passOrSay(matcher, R.string.error_message),
                         handler);
             }
         };
@@ -266,14 +253,14 @@ public class ShareHandler {
             public void match(final Pattern<? super Error, ? super String> matcher) {
                 connection.execute(
                         new Player.Open(Player.Open.TYPE_PLAYLIST, PlaylistType.VIDEO_PLAYLISTID),
-                        matchOrSay(matcher, R.string.error_play_media_file),
+                        passOrSay(matcher, R.string.error_play_media_file),
                         handler);
             }
         };
     }
 
-    private <T> ApiCallback<T>
-    matchOrSay(final Either.Pattern<? super Error, ? super T> matcher, final @StringRes int message) {
+    private static <T> ApiCallback<T>
+    passOrSay(final Either.Pattern<? super Error, ? super T> matcher, final @StringRes int message) {
         return new ApiCallback<T>() {
             @Override
             public void onSuccess(T result) {
@@ -287,8 +274,33 @@ public class ShareHandler {
         };
     }
 
-    private void say(@StringRes int message, Object... fmtArgs) {
-        strings.toast(strings.get(message, fmtArgs));
+    /*
+     * It seems Kodi unceremoniously drops the socket after receiving a
+     * notification-type request. OkHttp doesn't like that. This brings the
+     * Either back to the successful side if it contains this specific error.
+     */
+    private static <T> Either<Error, String>
+    okHttpHatesNotifications(final Either<Error, T> either) {
+        return new Either<Error, String>() {
+            @Override
+            public void match(final Pattern<? super Error, ? super String> matcher) {
+                either.match(new Pattern<Error, T>() {
+                    @Override
+                    public void ok(T value) {
+                        matcher.ok(String.valueOf(value));
+                    }
+
+                    @Override
+                    public void fail(Error error) {
+                        if (error.description.contains("unexpected end of stream")) {
+                            matcher.ok("");
+                        } else {
+                            matcher.fail(error);
+                        }
+                    }
+                });
+            }
+        };
     }
 
 }

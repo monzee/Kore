@@ -164,7 +164,7 @@ public class RemoteActivity extends BaseActivity
                         }
 
                         @Override
-                        public void toast(String message) {
+                        public void say(String message) {
                             Toast.makeText(RemoteActivity.this, message, Toast.LENGTH_SHORT)
                                     .show();
                         }

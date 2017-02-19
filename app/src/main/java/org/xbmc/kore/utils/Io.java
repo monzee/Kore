@@ -5,7 +5,7 @@ package org.xbmc.kore.utils;
  *
  * This is a monad like {@link Either} and there used to be a monad
  * implementation here but they got moved to {@link Result} which adds
- * semantics for error propagation and recovery.
+ * semantics for error propagation and recovery. Only the interfaces remain.
  *
  * @param <T> The type of the value being computed
  */

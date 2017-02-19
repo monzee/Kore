@@ -36,14 +36,15 @@ package org.xbmc.kore.utils;
  * </pre>
  * You cannot do something like <code>Post p = getLatest.ok()</code> or ask
  * <code>boolean ok = getLatest.isSuccessful()</code> like you'd probably
- * expect. This ensures that you handle both possible cases at all times. If
- * you squint, it looks like a checked exception call except the call happens
- * outside the block and the error might not even be throwable (it is in
- * this case).
+ * expect. This ensures that when you need a value, you handle both possible
+ * cases at all times. If you squint, it looks like a checked exception call
+ * except the call happens outside the block and the error might not even be
+ * throwable (it is in this case).
  * <p>
  * Suppose we have a whole bunch of service calls and we wish to do one after
  * the other but only if it succeeds. If we encounter an error once, we want
- * to receive it in the end to handle it.
+ * to receive it at the end to handle it. Likewise, we'd like to receive the
+ * last value produced by the sequence at the end.
  * <pre>
  *     User postAuthor(Post p) throws SomeException;
  *     List[Post] allPostsBy(User u) throws AnotherException;
@@ -67,7 +68,8 @@ package org.xbmc.kore.utils;
  *         }
  *     }
  * </pre>
- * The others are built similarly but since java7 syntax is so painful:
+ * The others are built similarly but since java7 syntax is so painful, I'll be
+ * using java8 syntax from hereon:
  * <pre>
  *     Either.Bind[Err, User, List[Post]] getAllPostsByUser = user -> patt -> {
  *         try {
@@ -76,29 +78,42 @@ package org.xbmc.kore.utils;
  *             patt.fail(new Err(e));
  *         }
  *     };
- *     Either.Bind[Err, Post, List[Comments]] getAllCommentsInPost = ...;
+ *     Either.Bind[Err, Post, List[Comments]] getAllCommentsInPost = post -> patt -> {
+ *         try {
+ *             patt.ok(service.allCommentsIn(post));
+ *         } catch (Exception e) {
+ *             patt.fail(new Err(e));
+ *         }
+ *     };
  * </pre>
- * By using the monad extensions, we can compose the calls. I said we'd get all
- * the comments in all posts. We can't do that because there's no list monad or
- * transformer here. Let's just get the comments in the first post of the user
- * instead:
+ * By using the monad extensions, we can compose the calls into one big call
+ * that produces a single value or error:
  * <pre>
  *     Either.Monad.of(getLatest)
  *          .then(getPostAuthor)
  *          .then(getAllPostsByUser)
- *          .map(posts -> posts.get(0))
- *          .then(getAllCommentsInPost)
- *          .match(new Either.Pattern[Err, List[Comments]]() {
- *              public void ok(List[Comments] comments) {}
- *              public void fail(Err e) {}
- *          })
+ *          .then(posts ->
+ *              // this is actually impossible to do correctly because we
+ *              // have not defined the list monad and the either list
+ *              // transformer. oh well. just imagine they exist.
+ *              Many.Monad.from(posts)
+ *                  .toEither(getAllCommentsInPost)
+ *                  .map(Many.Monad::toList))
+ *          .match(new Either.Pattern[Err, List[Comment]]() {
+ *              public void ok(List[Comment] comments) {
+ *                  show(comments);
+ *              }
+ *              public void fail(Err e) {
+ *                  report(e);
+ *              }
+ *          });
  * </pre>
  * If any of the Eithers fails, the Err object would be passed down the chain
  * without executing the Bind or the map. The error would ultimately be
  * received by the #fail(Err) method in the pattern.
  * <p>
- * You might be asking, "why not just call the methods normally?" and you'd be
- * absolutely right to wonder! If you're lucky to have a synchronous API, call
+ * You might be asking, "Why not just call the methods normally?" and you'd be
+ * absolutely right! If you're lucky to have a synchronous API, you should call
  * them normally and add asynchronicity at the call site only. But if your
  * service layer only exposes asynchronous methods, you could use this pattern
  * and wrap the callbacks to avoid the "pyramid of doom". An asynchronous API
@@ -128,10 +143,15 @@ package org.xbmc.kore.utils;
  * </pre>
  * Imagine how a sequence of asynchronous calls would look like. Imagine how
  * many times you'd repeat yourself to handle the errors at every level. Now
- * imagine conditionals which call slightly different methods at each branch.
+ * imagine branching logic or conditionals that do different things depending
+ * on some state. The imaginary part above calling #getAllCommentsInPost() for
+ * every post in a list stops requesting in the middle of the traversal if it
+ * encounters an error and sends the error down to the handler. This would have
+ * been a simple try-catch in a sync API, but how would it look like in an
+ * async API?
  * <p>
- * With Either, the usage would be the exactly like shown before. It's a
- * uniform API that does not care how the data arrives. Much worse than a sync
+ * With Either, the interface for async would be exactly the same as sync. It's
+ * a uniform API that does not care how the data arrives. Much worse than a sync
  * API but also much better than callback hell.
  *
  * @param <E> The type of the object describing the error.
@@ -143,21 +163,21 @@ public interface Either<E, V> {
      * Access the result of the computation.
      *
      * @param matcher A callback object that handles both the successful and
-     *                erroneous result of the computation.
+     *                erroneous result of the computation. If you passed null
+     *                to this method or {@link Monad#tee(Pattern)} and did not
+     *                get a NullPointerException, that means a link in the
+     *                chain of monads did not call any method of the Pattern
+     *                object given to it.
      */
     void match(Pattern<? super E, ? super V> matcher);
 
     /**
      * The callback interface.
      *
-     * The intention here is to call either #ok() or #fail() inside a
-     * {@link Either#match(Pattern)} implementation only once. That is not
-     * really enforceable by the language though. Nothing stops you from
-     * calling both in the same branch multiple times.
-     *
-     * It may be interesting to call #ok() multiple times then call #fail() in
-     * the end to simulate a stream of events or trigger a downstream request
-     * to be sent multiple times.
+     * The intended usage here is to call either #ok() or #fail() inside a
+     * {@link Either#match(Pattern)} implementation only once per branch. That
+     * is not really enforceable by the language though. Nothing stops you from
+     * calling neither or both in the same branch multiple times.
      *
      * @param <E> The error type.
      * @param <V> The success type.
@@ -182,10 +202,15 @@ public interface Either<E, V> {
     }
 
     /**
-     * A wrapper for {@link Either} objects that gives them monadic properties.
+     * A wrapper for {@link Either} objects that makes them monadic.
      *
-     * If this were Java8, these would have been static and default methods in
-     * the Either interface.
+     * "Monadic" here means individual Eithers can be combined to form a super
+     * Either that generates a single value or error while doing all the work
+     * in all the component Eithers. I don't know if this obeys the monad laws
+     * and I don't think it's important.
+     *
+     * This is an inner class because these really should be static and default
+     * methods on the Either interface if this were java8.
      *
      * @param <E> The error type.
      * @param <V> The success type.
@@ -255,15 +280,36 @@ public interface Either<E, V> {
         /**
          * Performs a match on the pattern then returns the Either.
          *
+         * That's the idea at least. The implementation is more involved
+         * because doing it the naive way would make it call upstream Eithers
+         * as many times as there are tee and match calls below them. This is a
+         * problem if they have side effects.
+         *
          * Useful for debugging. You can insert a tee between <code>#then()</code>
          * calls to inspect the value of the Either at that point.
          *
          * @param matcher A pattern object to match.
          * @return the same Either object
          */
-        public Monad<E, V> tee(Pattern<E, V> matcher) {
-            match(matcher);
-            return this;
+        public Monad<E, V> tee(final Pattern<? super E, ? super V> matcher) {
+            return Either.Monad.of(new Either<E, V>() {
+                @Override
+                public void match(final Pattern<? super E, ? super V> innerMatcher) {
+                    either.match(new Pattern<E, V>() {
+                        @Override
+                        public void ok(V value) {
+                            matcher.ok(value);
+                            innerMatcher.ok(value);
+                        }
+
+                        @Override
+                        public void fail(E error) {
+                            matcher.fail(error);
+                            innerMatcher.fail(error);
+                        }
+                    });
+                }
+            });
         }
 
         /**
