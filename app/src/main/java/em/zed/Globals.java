@@ -27,9 +27,6 @@ public interface Globals {
             throw new RuntimeException(error);
         }
     };
-
-    ExecutorService threadContext(String name);
-
     Globals DEFAULT = new Globals() {
         @Override
         public ExecutorService threadContext(final String name) {
@@ -41,5 +38,7 @@ public interface Globals {
             });
         }
     };
+
+    ExecutorService threadContext(String name);
 
 }

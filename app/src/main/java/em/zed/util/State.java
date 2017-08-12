@@ -19,45 +19,35 @@ public interface State {
     /**
      * An action causes the system's state to change when applied.
      * <p>
-     * This along with {@link Effect} implement the double dispatch pattern.
+     * This along with its type parameter implement the double dispatch pattern.
      * In functional terms, {@link Action} is a sum type whose branches are the
-     * methods of the associated {@link Effect} type. Instances of the {@link
-     * Effect} type (the "actor") are like single-level patterns with a ton of
-     * ceremony because java and no return value, just side effects (hence the
-     * name).
+     * methods of the associated type. Instances of the associated type (the
+     * "actor") are like single-level patterns with a ton of ceremony because
+     * java and no return value, just side effects.
      * <p>
      * Action instances are also referred to as "state" in this document. The
      * actual state is the arguments passed to the actor method being called
-     * in the action. In a strict implementation, the {@link #apply(Effect)}
-     * will only call a single {@link Effect} method once, so the action is
-     * effectively the state itself. In the "passive view" or "humble object"
-     * pattern however, the {@link Effect} methods are more granular and the
-     * {@link #apply} implementations have generally more logic, thus the real
-     * state cannot be precisely identified. Nevertheless, applying the action
-     * should bring the system to the desired state so the distinction doesn't
-     * matter so much.
+     * in the action. In a strict Moore machine implementation, the
+     * {@link #apply} will only call a single actor method once, so the action
+     * is effectively the state itself. In the "passive view" or "humble object"
+     * pattern however, the actor methods are more granular; the {@link #apply}
+     * method bodies generally contain more logic and invoke multiple actor
+     * methods, thus the actual state cannot be precisely identified.
+     * Nevertheless, applying the action should bring the system to the desired
+     * state so the distinction doesn't matter so much.
      *
-     * @param <A> the concrete action type
      * @param <E> the concrete actor type
      */
-    interface Action<A extends Action<A, E>, E extends Effect<A, E>> {
+    interface Action<E> {
         /**
          * Implementations of this method should only call a single method of
          * the actor once and do nothing else. This cannot be enforced by the
          * language so diligence is required to keep the system sane.
          *
-         * @param actor an object that "renders" the current state of the system.
+         * @param actor an object that "renders" the resulting state of the
+         *              system.
          */
         void apply(E actor);
-    }
-
-    /**
-     * Manifests the state changes in the system.
-     *
-     * @param <A> the concrete action type
-     * @param <E> the concrete actor type
-     */
-    interface Effect<A extends Action<A, E>, E extends Effect<A, E>> {
     }
 
     /**
@@ -74,7 +64,7 @@ public interface State {
         void run(Runnable block);
     }
 
-    class Machine<A extends Action<A, E>, E extends Effect<A, E>> {
+    class Machine<A extends Action<E>, E> {
 
         private final ExecutorService joinContext;
         private final Dispatcher dispatcher;
@@ -87,7 +77,8 @@ public interface State {
         }
 
         /**
-         * @return the last action applied
+         * @return the last action applied. Useful to set a checkpoint of sorts
+         * that you can return to later.
          */
         public A peek() {
             return lastAction;
@@ -97,7 +88,7 @@ public interface State {
          * Applies an action.
          * <p>
          * Shortcut to {@link #willApply(Action)} followed by
-         * {@link #dispatch(Effect)}.
+         * {@link #dispatch(Object)}.
          *
          * @param action to apply
          * @param actor will receive the new state
@@ -110,7 +101,7 @@ public interface State {
 
         /**
          * Schedules an action to be applied on the next call to
-         * {@link #dispatch(Effect)}.
+         * {@link #dispatch(Object)}.
          *
          * @param action to apply
          * @return whether the action was accepted. Meant to be overridden;
@@ -179,7 +170,7 @@ public interface State {
             return backlog;
         }
 
-        private static class Job<A extends Action<A, ?>> {
+        private static class Job<A extends Action<?>> {
             final A producer;
             final Future<?> await;
 

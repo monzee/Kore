@@ -12,14 +12,16 @@ import em.zed.backend.ApiClient;
 
 public final class Links implements ApiClient.Link {
 
+    private final List<ApiClient.Link> links = new ArrayList<>();
+
+    private Links() {
+    }
+
     public static Links compose(final ApiClient.Link... links) {
         Links aggregate = new Links();
         Collections.addAll(aggregate.links, links);
         return aggregate;
     }
-
-    private final List<ApiClient.Link> links = new ArrayList<>();
-    private Links() {}
 
     @Override
     public void unlink() {

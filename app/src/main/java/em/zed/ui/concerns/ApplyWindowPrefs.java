@@ -17,7 +17,9 @@ import org.xbmc.kore.Settings;
 
 public class ApplyWindowPrefs extends Fragment {
 
-    public interface CanShowWhenLocked {}
+    private static final String TAG = ApplyWindowPrefs.class.getSimpleName();
+    private SharedPreferences prefs;
+    private boolean canApplyShowWhenLocked = false;
 
     public static int preferredTheme(Context context) {
         String preferredTheme = PreferenceManager
@@ -45,10 +47,6 @@ public class ApplyWindowPrefs extends Fragment {
             fm.beginTransaction().add(new ApplyWindowPrefs(), TAG).commit();
         }
     }
-
-    private static final String TAG = ApplyWindowPrefs.class.getSimpleName();
-    private SharedPreferences prefs;
-    private boolean canApplyShowWhenLocked = false;
 
     @Override
     public void onAttach(Context context) {
@@ -88,6 +86,9 @@ public class ApplyWindowPrefs extends Fragment {
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }
+    }
+
+    public interface CanShowWhenLocked {
     }
 
 }

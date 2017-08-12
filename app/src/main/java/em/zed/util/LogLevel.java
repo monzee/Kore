@@ -7,12 +7,6 @@ package em.zed.util;
 public enum LogLevel {
     D, I, E;
 
-    public interface Logger {
-        boolean isEnabled(LogLevel level);
-        void log(LogLevel level, String message);
-        void log(LogLevel level, Throwable error, String message);
-    }
-
     public void to(Logger logger, String tpl, Object... fmtArgs) {
         if (logger != null && logger.isEnabled(this)) {
             logger.log(this, String.format(tpl, fmtArgs));
@@ -23,5 +17,13 @@ public enum LogLevel {
         if (logger != null && logger.isEnabled(this)) {
             logger.log(this, error, String.format(tpl, fmtArgs));
         }
+    }
+
+    public interface Logger {
+        boolean isEnabled(LogLevel level);
+
+        void log(LogLevel level, String message);
+
+        void log(LogLevel level, Throwable error, String message);
     }
 }

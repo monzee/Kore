@@ -136,9 +136,7 @@ public interface ApiClient {
         }
 
         @Override
-        public void dispose() {
-
-        }
+        public void dispose() {}
     };
 
     boolean supports(int feature);

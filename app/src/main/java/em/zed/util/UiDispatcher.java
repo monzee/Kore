@@ -10,6 +10,7 @@ import android.util.Log;
 
 public abstract class UiDispatcher implements State.Dispatcher {
 
+    private static final String TAG = UiDispatcher.class.getSimpleName();
     public static final State.Dispatcher LOG_AND_RETHROW = new UiDispatcher() {
         @Override
         public void handle(final Throwable error) {
@@ -17,15 +18,12 @@ public abstract class UiDispatcher implements State.Dispatcher {
             throw new RuntimeException(error);
         }
     };
-
     public static final State.Dispatcher JUST_LOG = new UiDispatcher() {
         @Override
         public void handle(final Throwable error) {
             Log.e(TAG, "Error while dispatching an action", error);
         }
     };
-
-    private static final String TAG = UiDispatcher.class.getSimpleName();
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
     @Override

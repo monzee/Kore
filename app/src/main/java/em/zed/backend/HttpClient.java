@@ -26,50 +26,6 @@ import em.zed.util.LogLevel;
 
 public class HttpClient implements ApiClient {
 
-    public static class Builder {
-        private final OkHttpClient client = new OkHttpClient();
-        private final String hostUrl;
-        private LogLevel.Logger log;
-
-        public Builder(String hostUrl) {
-            this.hostUrl = hostUrl;
-        }
-
-        public Builder(HostInfo hostInfo) {
-            this(hostInfo.getJsonRpcHttpEndpoint());
-            withCredentials(hostInfo.getUsername(), hostInfo.getPassword());
-        }
-
-        public Builder withCredentials(final String username, final String password) {
-            if (username != null && !username.isEmpty()) {
-                client.setAuthenticator(new Authenticator() {
-                    @Override
-                    public Request authenticate(Proxy proxy, Response response) {
-                        return response.request()
-                                .newBuilder()
-                                .header("Authorization", Credentials.basic(username, password))
-                                .build();
-                    }
-
-                    @Override
-                    public Request authenticateProxy(Proxy proxy, Response response) {
-                        return null;
-                    }
-                });
-            }
-            return this;
-        }
-
-        public Builder withLogger(LogLevel.Logger log) {
-            this.log = log;
-            return this;
-        }
-
-        public HttpClient build() {
-            return new HttpClient(client, log, hostUrl);
-        }
-    }
-
     private static final MediaType TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
     private final OkHttpClient httpClient;
     private final LogLevel.Logger log;
@@ -141,31 +97,80 @@ public class HttpClient implements ApiClient {
         ResponseBody body = either.result.body();
         int code = either.result.code();
         switch (code) {
-            case 200: try {
-                String json = body.string();
-                LogLevel.D.to(log, "Got response: %s", json);
-                return apiRequest.resultFromJson(JsonResponse.verify(json));
-            } catch (IOException e) {
-                throw new ApiException(ApiException.IO_EXCEPTION_WHILE_READING_RESPONSE, e);
-            } finally {
+            case 200:
                 try {
-                    body.close();
-                } catch (IOException ignored) {}
-            }
+                    String json = body.string();
+                    LogLevel.D.to(log, "Got response: %s", json);
+                    return apiRequest.resultFromJson(JsonResponse.verify(json));
+                } catch (IOException e) {
+                    throw new ApiException(ApiException.IO_EXCEPTION_WHILE_READING_RESPONSE, e);
+                } finally {
+                    try {
+                        body.close();
+                    } catch (IOException ignored) {
+                    }
+                }
             case 204:  // no content
                 return null;
             case 401:  // fallthrough
             case 403:
-                throw new ApiException(ApiException.HTTP_RESPONSE_CODE_UNAUTHORIZED, "Response code: " + code);
+                throw new ApiException(ApiException.HTTP_RESPONSE_CODE_UNAUTHORIZED,
+                        "Response code: " + code);
             case 404:
-                throw new ApiException(ApiException.HTTP_RESPONSE_CODE_NOT_FOUND, "Response code: " + code);
+                throw new ApiException(ApiException.HTTP_RESPONSE_CODE_NOT_FOUND,
+                        "Response code: " + code);
             default:
-                throw new ApiException(ApiException.HTTP_RESPONSE_CODE_UNKNOWN, "Response code: " + code);
+                throw new ApiException(ApiException.HTTP_RESPONSE_CODE_UNKNOWN,
+                        "Response code: " + code);
         }
     }
 
     @Override
     public void dispose() {
+    }
+
+    public static class Builder {
+        private final OkHttpClient client = new OkHttpClient();
+        private final String hostUrl;
+        private LogLevel.Logger log;
+
+        public Builder(String hostUrl) {
+            this.hostUrl = hostUrl;
+        }
+
+        public Builder(HostInfo hostInfo) {
+            this(hostInfo.getJsonRpcHttpEndpoint());
+            withCredentials(hostInfo.getUsername(), hostInfo.getPassword());
+        }
+
+        public Builder withCredentials(final String username, final String password) {
+            if (username != null && !username.isEmpty()) {
+                client.setAuthenticator(new Authenticator() {
+                    @Override
+                    public Request authenticate(Proxy proxy, Response response) {
+                        return response.request()
+                                .newBuilder()
+                                .header("Authorization", Credentials.basic(username, password))
+                                .build();
+                    }
+
+                    @Override
+                    public Request authenticateProxy(Proxy proxy, Response response) {
+                        return null;
+                    }
+                });
+            }
+            return this;
+        }
+
+        public Builder withLogger(LogLevel.Logger log) {
+            this.log = log;
+            return this;
+        }
+
+        public HttpClient build() {
+            return new HttpClient(client, log, hostUrl);
+        }
     }
 
 }

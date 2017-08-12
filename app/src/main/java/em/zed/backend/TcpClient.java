@@ -35,55 +35,6 @@ import em.zed.util.State;
 
 public class TcpClient implements ApiClient, Runnable {
 
-    public static class Builder {
-        private final InetSocketAddress address;
-        private State.Dispatcher fg = Globals.IMMEDIATE;
-        private ExecutorService bg = Globals.IO;
-        private LogLevel.Logger log;
-
-        public Builder(String host, int port) {
-            address = new InetSocketAddress(host, port);
-        }
-
-        public Builder(HostInfo hostInfo) {
-            this(hostInfo.getAddress(), hostInfo.getTcpPort());
-        }
-
-        public Builder withDispatcher(State.Dispatcher fg) {
-            if (fg != null) {
-                this.fg = fg;
-            }
-            return this;
-        }
-
-        public Builder withBgExecutor(ExecutorService bg) {
-            if (bg != null) {
-                this.bg = bg;
-            }
-            return this;
-        }
-
-        public Builder withLogger(LogLevel.Logger log) {
-            this.log = log;
-            return this;
-        }
-
-        public TcpClient build() throws ApiException {
-            return build(5_000);
-        }
-
-        public TcpClient build(int timeout) throws ApiException {
-            Socket socket = new Socket();
-            try {
-                socket.setSoTimeout(30_000);
-                socket.connect(address, timeout);
-                return new TcpClient(fg, bg, log, socket);
-            } catch (IOException e) {
-                throw new ApiException(ApiException.IO_EXCEPTION_WHILE_CONNECTING, e);
-            }
-        }
-    }
-
     private final State.Dispatcher fg;
     private final LogLevel.Logger log;
     private final Socket socket;
@@ -96,7 +47,8 @@ public class TcpClient implements ApiClient, Runnable {
     private final Set<OnInputNotification> inputObservers = new HashSet<>();
     private final Set<OnApplicationNotification> appObservers = new HashSet<>();
 
-    public TcpClient(State.Dispatcher fg, ExecutorService bg, LogLevel.Logger log, Socket socket) throws IOException {
+    public TcpClient(State.Dispatcher fg, ExecutorService bg, LogLevel.Logger log, Socket socket)
+            throws IOException {
         this.fg = fg;
         this.log = log;
         this.socket = socket;
@@ -186,9 +138,10 @@ public class TcpClient implements ApiClient, Runnable {
         inputObservers.clear();
         appObservers.clear();
         watchResponse.cancel(true);
-        for (Closeable e : new Closeable[] { input, output, socket }) try {
+        for (Closeable e : new Closeable[]{input, output, socket}) try {
             e.close();
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+        }
     }
 
     @Override
@@ -230,7 +183,8 @@ public class TcpClient implements ApiClient, Runnable {
         } finally {
             if (parser != null) try {
                 parser.close();
-            } catch (IOException ignored) {}
+            } catch (IOException ignored) {
+            }
         }
     }
 
@@ -297,7 +251,8 @@ public class TcpClient implements ApiClient, Runnable {
                 }
                 break;
             case Application.OnVolumeChanged.NOTIFICATION_NAME:
-                Application.OnVolumeChanged onVolumeChanged = new Application.OnVolumeChanged(params);
+                Application.OnVolumeChanged onVolumeChanged =
+                        new Application.OnVolumeChanged(params);
                 for (OnApplicationNotification on : appObservers) {
                     on.appVolumeChanged(onVolumeChanged);
                 }
@@ -305,6 +260,55 @@ public class TcpClient implements ApiClient, Runnable {
             default:
                 LogLevel.E.to(log, "Unhandled notification: %s", type);
                 break;
+        }
+    }
+
+    public static class Builder {
+        private final InetSocketAddress address;
+        private State.Dispatcher fg = Globals.IMMEDIATE;
+        private ExecutorService bg = Globals.IO;
+        private LogLevel.Logger log;
+
+        public Builder(String host, int port) {
+            address = new InetSocketAddress(host, port);
+        }
+
+        public Builder(HostInfo hostInfo) {
+            this(hostInfo.getAddress(), hostInfo.getTcpPort());
+        }
+
+        public Builder withDispatcher(State.Dispatcher fg) {
+            if (fg != null) {
+                this.fg = fg;
+            }
+            return this;
+        }
+
+        public Builder withBgExecutor(ExecutorService bg) {
+            if (bg != null) {
+                this.bg = bg;
+            }
+            return this;
+        }
+
+        public Builder withLogger(LogLevel.Logger log) {
+            this.log = log;
+            return this;
+        }
+
+        public TcpClient build() throws ApiException {
+            return build(5_000);
+        }
+
+        public TcpClient build(int timeout) throws ApiException {
+            Socket socket = new Socket();
+            try {
+                socket.setSoTimeout(30_000);
+                socket.connect(address, timeout);
+                return new TcpClient(fg, bg, log, socket);
+            } catch (IOException e) {
+                throw new ApiException(ApiException.IO_EXCEPTION_WHILE_CONNECTING, e);
+            }
         }
     }
 

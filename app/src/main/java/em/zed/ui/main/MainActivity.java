@@ -45,33 +45,13 @@ public class MainActivity extends AppCompatActivity
         Connection.HostEvents,
         ApplyWindowPrefs.CanShowWhenLocked {
 
-    private static class Scope {
-        final LogLevel.Logger log = new AndroidLogger("main-activity");
-        final UiDispatcher dispatcher = new UiDispatcher() {
-            @Override
-            public void handle(Throwable error) {
-                LogLevel.E.to(log, error, "Error while dispatching an action");
-                throw new RuntimeException(error);
-            }
-        };
-        final State.Machine<Connection.Status, Connection.Port> connector = new State.Machine<>(
-                Globals.DEFAULT.threadContext("main-junction-thread"),
-                dispatcher
-        );
-        final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-        final ConnectionController connection = new ConnectionController(scheduler, log);
-        ApiClient client = ApiClient.DISCONNECTED;
-        Connection.Status idleState = Connection.disconnected();
-    }
-
-    private Scope our;
-    private ApiClient.Link syncHandle;
-    private Future<?> retry;
-
     @InjectView(R.id.background_image) ImageView backgroundImage;
     @InjectView(R.id.pager_indicator) CirclePageIndicator pageIndicator;
     @InjectView(R.id.pager) ViewPager viewPager;
     @InjectView(R.id.default_toolbar) Toolbar toolbar;
+    private Scope our;
+    private ApiClient.Link syncHandle;
+    private Future<?> retry;
 
     @Override
     public Object onRetainCustomNonConfigurationInstance() {
@@ -228,6 +208,25 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void run() {
         our.connector.apply(our.connection.refresh(our.client), MainActivity.this);
+    }
+
+    private static class Scope {
+        final LogLevel.Logger log = new AndroidLogger("main-activity");
+        final UiDispatcher dispatcher = new UiDispatcher() {
+            @Override
+            public void handle(Throwable error) {
+                LogLevel.E.to(log, error, "Error while dispatching an action");
+                throw new RuntimeException(error);
+            }
+        };
+        final State.Machine<Connection.Status, Connection.Port> connector = new State.Machine<>(
+                Globals.DEFAULT.threadContext("main-junction-thread"),
+                dispatcher
+        );
+        final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        final ConnectionController connection = new ConnectionController(scheduler, log);
+        ApiClient client = ApiClient.DISCONNECTED;
+        Connection.Status idleState = Connection.disconnected();
     }
 
 }
